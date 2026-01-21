@@ -259,7 +259,7 @@ const Dashboard = () => {
             {/* 2. Results Section (Only if we have data) */}
             {(hasStudents || isLoading) && (
                 <section className="space-y-8 border-t border-gray-200 dark:border-gray-800 pt-12">
-                    <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                         <div>
                             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                                 Allocation Dashboard
@@ -344,7 +344,7 @@ const Dashboard = () => {
 
                             {/* Seating Grid */}
                             {currentResult && (
-                                <div className="space-y-8">
+                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                                     {currentResult.halls.map((hallSeating) => (
                                         <SeatingGrid
                                             key={hallSeating.hall.id}
