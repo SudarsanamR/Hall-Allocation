@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-gray-200 dark:border-gray-800;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100;
+    font-family: 'Space Grotesk', 'Inter', sans-serif;
+    margin: 0;
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/80 backdrop-blur-xl border border-white/50 shadow-soft dark:bg-gray-900/90 dark:border-gray-800 dark:text-white;
+  }
+
+  /* Keeping for backward compatibility if needed, but .glass now handles it */
+  .glass-dark {
+    @apply bg-gray-900/90 backdrop-blur-xl border border-gray-800 shadow-soft text-white;
+  }
+
+  .card {
+    @apply bg-white rounded-3xl shadow-soft p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 dark:bg-gray-900 dark:border dark:border-gray-800;
+  }
+
+  .btn-primary {
+    @apply bg-gray-900 text-white px-6 py-3 rounded-2xl font-semibold shadow-soft hover:bg-gray-800 hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-primary-600 dark:hover:bg-primary-500;
+  }
+
+  .btn-accent {
+    @apply bg-accent-500 text-white px-6 py-3 rounded-2xl font-semibold shadow-neon hover:bg-accent-600 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-100 text-gray-900 px-6 py-3 rounded-2xl font-medium hover:bg-gray-200 transition-all duration-300 active:scale-95 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700;
+  }
+
+  .input-field {
+    @apply w-full px-5 py-4 rounded-2xl bg-gray-50 border-none ring-1 ring-gray-200 focus:ring-2 focus:ring-accent-500 outline-none transition-all duration-200 text-gray-900 placeholder-gray-400 dark:bg-gray-800 dark:ring-gray-700 dark:text-white dark:placeholder-gray-500;
+  }
+
+  .stat-card {
+    @apply bg-white rounded-3xl p-6 shadow-soft hover:shadow-lg transition-all duration-300 relative overflow-hidden dark:bg-gray-900 dark:border dark:border-gray-800;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
