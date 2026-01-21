@@ -156,3 +156,74 @@ def download_student_wise():
         )
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@bp.route('/search', methods=['POST'])
+def search_student():
+    """
+    Search for a student's allocation details by register number.
+    Returns a list of allocations across all sessions.
+    """
+    data = request.get_json()
+    reg_no = data.get('registerNumber')
+
+    if not reg_no:
+        return jsonify({'error': 'Register number is required'}), 400
+
+    matches = []
+
+    if not db.seating_results:
+        return jsonify({'error': 'Allocation not generated yet. Please contact admin.'}), 404
+
+    for session_key, result in db.seating_results.items():
+        for allocation in result.studentAllocation:
+             if allocation.registerNumber == reg_no:
+                 # Found the student. Now find the hall grid.
+                 hall_data = None
+                 for hs in result.halls:
+                     if hs.hall.name == allocation.hallName:
+                         # Serialize HallSeating
+                         hall_data = {
+                            'hall': {
+                                'id': hs.hall.id,
+                                'name': hs.hall.name,
+                                'block': hs.hall.block,
+                                'rows': hs.hall.rows,
+                                'columns': hs.hall.columns,
+                                'capacity': hs.hall.capacity
+                            },
+                            'grid': [
+                                [
+                                    {
+                                        'row': seat.row,
+                                        'col': seat.col,
+                                        'student': {
+                                            'registerNumber': seat.student.registerNumber,
+                                            'subjectCode': seat.student.subjectCode,
+                                            'department': seat.student.department,
+                                            'examDate': seat.student.examDate,
+                                            'session': seat.student.session
+                                        } if seat.student else None,
+                                        'subject': seat.subject,
+                                        'department': seat.department
+                                    }
+                                    for seat in row
+                                ]
+                                for row in hs.grid
+                            ],
+                            'studentsCount': hs.studentsCount
+                         }
+                         break
+
+                 matches.append({
+                     'session': session_key,
+                     'subject': allocation.subject,
+                     'hallName': allocation.hallName,
+                     'seatNumber': allocation.seatNumber,
+                     'formattedSession': session_key.replace('_', ' '),
+                     'hallSeating': hall_data
+                 })
+    
+    if not matches:
+        return jsonify({'error': 'No allocation found for this register number'}), 404
+
+    return jsonify({'success': True, 'allocations': matches}), 200

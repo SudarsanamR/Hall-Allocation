@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, Download, Calendar, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, Download, RefreshCw, LayoutGrid } from 'lucide-react';
 import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, downloadStudentWiseExcel } from '../utils/api';
 import type { SeatingResult, GenerateResponse, UploadFileResponse, Stats } from '../types';
 import SeatingGrid from '../components/seating/SeatingGrid';
 import StatCards from '../components/layout/StatCards';
 
-const Dashboard = () => {
+const AdminDashboard = () => {
+    const navigate = useNavigate();
     // State for Upload
     const [uploading, setUploading] = useState(false);
     const [uploadResult, setUploadResult] = useState<UploadFileResponse | null>(null);
@@ -270,13 +272,22 @@ const Dashboard = () => {
                         </div>
 
                         {!isLoading && (
-                            <button
-                                onClick={handleGenerate}
-                                className="btn-secondary flex items-center gap-2 text-sm"
-                            >
-                                <RefreshCw size={16} />
-                                Refresh Allocation
-                            </button>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => navigate('/halls')}
+                                    className="btn-secondary flex items-center gap-2 text-sm bg-white dark:bg-gray-800"
+                                >
+                                    <LayoutGrid size={16} />
+                                    Manage Halls
+                                </button>
+                                <button
+                                    onClick={handleGenerate}
+                                    className="btn-secondary flex items-center gap-2 text-sm"
+                                >
+                                    <RefreshCw size={16} />
+                                    Refresh Allocation
+                                </button>
+                            </div>
                         )}
                     </div>
 
@@ -362,4 +373,4 @@ const Dashboard = () => {
     );
 };
 
-export default Dashboard;
+export default AdminDashboard;

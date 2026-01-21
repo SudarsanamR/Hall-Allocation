@@ -75,3 +75,9 @@ export const getStudents = async (): Promise<Student[]> => {
     const response = await api.get('/students');
     return response.data;
 };
+
+// Search Student Allocation
+export const searchStudent = async (registerNumber: string): Promise<any> => {
+    const response = await api.post('/search', { registerNumber });
+    return response.data;
+};

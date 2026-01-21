@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import TopBar from './components/layout/TopBar';
-import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import StudentDashboard from './pages/StudentDashboard';
 import HallManagement from './pages/HallManagement';
 
 function App() {
@@ -12,7 +13,8 @@ function App() {
         <main className="pt-36 md:pt-32 p-4 md:p-8 animate-fade-in">
           <div className="w-full max-w-7xl mx-auto">
             <Routes>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/" element={<StudentDashboard />} />
+              <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/halls" element={<HallManagement />} />
             </Routes>
           </div>

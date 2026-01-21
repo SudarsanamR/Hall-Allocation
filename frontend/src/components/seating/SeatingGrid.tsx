@@ -5,9 +5,10 @@ import type { HallSeating } from '../../types';
 interface SeatingGridProps {
     hallSeating: HallSeating;
     colorMap: Map<string, string>;
+    highlightStudentId?: string;
 }
 
-const SeatingGrid = ({ hallSeating, colorMap }: SeatingGridProps) => {
+const SeatingGrid = ({ hallSeating, colorMap, highlightStudentId }: SeatingGridProps) => {
     const { hall, grid, studentsCount } = hallSeating;
 
     return (
@@ -25,16 +26,7 @@ const SeatingGrid = ({ hallSeating, colorMap }: SeatingGridProps) => {
                         Occupancy: <span className="font-medium text-gray-900 dark:text-white">{studentsCount}</span> / {hall.capacity}
                     </p>
                 </div>
-                <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-400">
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 border-2 border-gray-300 dark:border-gray-600 rounded-t-sm rounded-b-[2px]"></div>
-                        Available
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 bg-green-200 dark:bg-green-800/50 rounded-t-sm rounded-b-[2px] border-b-2 border-green-300 dark:border-green-600"></div>
-                        Booked
-                    </div>
-                </div>
+
             </div>
 
             {/* Screen Indicator */}
@@ -58,23 +50,15 @@ const SeatingGrid = ({ hallSeating, colorMap }: SeatingGridProps) => {
                                 key={`${rowIndex}-${colIndex}`}
                                 seat={seat}
                                 colorMap={colorMap}
+                                isHighlighted={highlightStudentId && seat.student ? seat.student.registerNumber === highlightStudentId : false}
+                                isMasked={!!highlightStudentId && !!seat.student && seat.student.registerNumber !== highlightStudentId}
                             />
                         ))
                     )}
                 </div>
             </div>
 
-            {/* Legend Footer */}
-            <div className="mt-8 pt-4 border-t border-gray-100 bg-gray-50/50 -mx-6 -mb-6 px-6 py-4">
-                <div className="flex flex-wrap items-center justify-center gap-4">
-                    {Array.from(colorMap.entries()).map(([key, color]) => (
-                        <div key={key} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
-                            <div className={`w-3 h-3 rounded-full ${color}`} />
-                            <span className="text-xs font-medium text-gray-700">{key}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
+
         </div>
     );
 };
