@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import HallManager from '../components/halls/HallManager';
 import HallForm from '../components/halls/HallForm';
 import { getHalls, createHall, updateHall, deleteHall, initializeDefaultHalls } from '../utils/api';
 import type { Hall, HallFormData } from '../types';
-import { RefreshCw, AlertCircle } from 'lucide-react';
+import { RefreshCw, AlertCircle, ArrowLeft } from 'lucide-react';
 
 const HallManagement = () => {
+    const navigate = useNavigate();
     const [halls, setHalls] = useState<Hall[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -99,22 +101,33 @@ const HallManagement = () => {
 
     return (
         <div className="space-y-6 animate-fade-in">
+            <div className="flex items-center gap-4 mb-6">
+                <button
+                    onClick={() => navigate('/')}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
+                    title="Back to Dashboard"
+                >
+                    <ArrowLeft size={24} />
+                </button>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Hall Configuration</h1>
+            </div>
+
             {error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-                    <AlertCircle className="text-red-600 flex-shrink-0" size={20} />
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 dark:bg-red-900/20 dark:border-red-800/50">
+                    <AlertCircle className="text-red-600 flex-shrink-0 dark:text-red-400" size={20} />
                     <div>
-                        <p className="font-semibold text-red-900">Error</p>
-                        <p className="text-red-700 text-sm">{error}</p>
+                        <p className="font-semibold text-red-900 dark:text-red-200">Error</p>
+                        <p className="text-red-700 text-sm dark:text-red-300">{error}</p>
                     </div>
                 </div>
             )}
 
             {halls.length === 0 && !showForm && (
                 <div className="card text-center py-12">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-4 dark:text-white">
                         No Halls Configured
                     </h3>
-                    <p className="text-gray-600 mb-6">
+                    <p className="text-gray-600 mb-6 dark:text-gray-400">
                         Initialize default halls or create custom halls manually
                     </p>
                     <div className="flex gap-4 justify-center">
@@ -135,7 +148,7 @@ const HallManagement = () => {
 
             {showForm && (
                 <div className="card">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6 dark:text-white">
                         {editingHall ? 'Edit Hall' : 'Add New Hall'}
                     </h2>
                     <HallForm

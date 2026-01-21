@@ -1,7 +1,9 @@
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Settings } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const TopBar = () => {
+    const navigate = useNavigate();
     const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
 
     useEffect(() => {
@@ -20,7 +22,7 @@ const TopBar = () => {
     return (
         <div className="fixed top-0 left-0 right-0 min-h-[7rem] h-auto py-2 md:py-0 md:h-28 glass dark:glass-dark flex flex-col md:flex-row items-center justify-between px-4 md:px-8 z-40 transition-all duration-300 shadow-sm border-b border-white/20 dark:border-gray-800">
             {/* Left: Anna Univ Logo */}
-            <div className="hidden md:block flex-shrink-0">
+            <div className="hidden md:block flex-shrink-0 w-24">
                 <img
                     src="https://www.freelogovectors.net/wp-content/uploads/2022/03/anna_university_logo_freelogovectors.net_.png"
                     alt="Anna University"
@@ -29,7 +31,7 @@ const TopBar = () => {
             </div>
 
             {/* Center: Title */}
-            <div className="flex flex-col items-center text-center mx-2 md:mx-4 my-2 md:my-0">
+            <div className="flex flex-col items-center text-center mx-2 md:mx-0 my-2 md:my-0 md:absolute md:left-1/2 md:-translate-x-1/2">
                 <h1 className="text-lg md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 uppercase tracking-wide leading-tight px-2">
                     Government College of Engineering
                 </h1>
@@ -52,6 +54,14 @@ const TopBar = () => {
 
                 {/* Controls Group */}
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => navigate('/halls')}
+                        className="p-2 md:p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors bg-white/50 dark:bg-black/20 backdrop-blur-sm shadow-sm"
+                        title="Hall Configuration"
+                    >
+                        <Settings size={20} />
+                    </button>
+
                     <button
                         onClick={toggleTheme}
                         className="p-2 md:p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors bg-white/50 dark:bg-black/20 backdrop-blur-sm shadow-sm"

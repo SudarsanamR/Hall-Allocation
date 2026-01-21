@@ -9,7 +9,7 @@ from app.services import parse_file, validate_student_data
 
 bp = Blueprint('upload', __name__, url_prefix='/api')
 
-ALLOWED_EXTENSIONS = {'xlsx', 'xls', 'csv', 'pdf'}
+ALLOWED_EXTENSIONS = {'pdf'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -26,7 +26,7 @@ def upload_file():
         return jsonify({'error': 'No file selected'}), 400
     
     if not allowed_file(file.filename):
-        return jsonify({'error': 'Invalid file type. Please upload .xlsx, .xls, or .csv file'}), 400
+        return jsonify({'error': 'Invalid file type. Please upload a .pdf file'}), 400
     
     try:
         # Save file temporarily
@@ -36,11 +36,8 @@ def upload_file():
         file.save(file_path)
         
         # Parse file
-        if filename.lower().endswith('.pdf'):
-            from app.services import parse_pdf
-            students = parse_pdf(file_path)
-        else:
-            students = parse_file(file_path)
+        from app.services import parse_pdf
+        students = parse_pdf(file_path)
         
         # Validate data
         warnings = validate_student_data(students)

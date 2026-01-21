@@ -27,7 +27,7 @@ const HallForm = ({ onSubmit, onCancel, initialData }: HallFormProps) => {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
                     Hall Name
                 </label>
                 <input
@@ -41,7 +41,7 @@ const HallForm = ({ onSubmit, onCancel, initialData }: HallFormProps) => {
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
                     Block
                 </label>
                 <input
@@ -56,7 +56,7 @@ const HallForm = ({ onSubmit, onCancel, initialData }: HallFormProps) => {
 
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
                         Rows
                     </label>
                     <input
@@ -71,7 +71,7 @@ const HallForm = ({ onSubmit, onCancel, initialData }: HallFormProps) => {
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
                         Columns
                     </label>
                     <input
@@ -86,8 +86,8 @@ const HallForm = ({ onSubmit, onCancel, initialData }: HallFormProps) => {
                 </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <p className="text-sm text-blue-800">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 dark:bg-blue-900/20 dark:border-blue-800">
+                <p className="text-sm text-blue-800 dark:text-blue-300">
                     <span className="font-semibold">Capacity:</span> {formData.rows * formData.columns} seats
                 </p>
             </div>

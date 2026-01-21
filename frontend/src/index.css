@@ -20,7 +20,7 @@
 
 @layer components {
   .glass {
-    @apply bg-white/80 backdrop-blur-xl border border-white/50 shadow-soft dark:bg-gray-900/90 dark:border-gray-800 dark:text-white;
+    @apply bg-white/80 backdrop-blur-xl border border-white/50 shadow-soft dark:bg-gray-900/80 dark:border-gray-800 dark:text-white;
   }
 
   /* Keeping for backward compatibility if needed, but .glass now handles it */
@@ -29,7 +29,7 @@
   }
 
   .card {
-    @apply bg-white rounded-3xl shadow-soft p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 dark:bg-gray-900 dark:border dark:border-gray-800;
+    @apply bg-white rounded-3xl shadow-soft p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 dark:bg-gray-900 dark:border dark:border-gray-800/50;
   }
 
   .btn-primary {

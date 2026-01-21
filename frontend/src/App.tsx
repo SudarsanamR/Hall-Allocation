@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import TopBar from './components/layout/TopBar';
 import Dashboard from './pages/Dashboard';
+import HallManagement from './pages/HallManagement';
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
           <div className="w-full max-w-7xl mx-auto">
             <Routes>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/halls" element={<HallManagement />} />
             </Routes>
           </div>
         </main>

@@ -74,13 +74,13 @@ def parse_pdf(file_path):
 def get_dept_from_code(code):
     """Maps Anna University degree codes to Department names"""
     mapping = {
+        '102': 'AUTO',
         '103': 'CIVIL',
         '104': 'CSE',
         '105': 'EEE',
         '106': 'ECE',
         '114': 'MECH',
+        '159': 'CSE(DS)',
         '205': 'IT',
-        '631': 'MBA',
-        # Add more as discovered from data
     }
     return mapping.get(code, 'UNKNOWN')

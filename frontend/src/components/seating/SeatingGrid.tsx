@@ -18,7 +18,7 @@ const SeatingGrid = ({ hallSeating, colorMap }: SeatingGridProps) => {
                     <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                         {hall.name}
                         <span className="text-sm font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">
-                            Block {hall.block}
+                            {hall.block}
                         </span>
                     </h3>
                     <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">

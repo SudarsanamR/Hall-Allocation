@@ -36,8 +36,8 @@ const HallManager = ({ halls, onEdit, onDelete, onAdd }: HallManagerProps) => {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold text-gray-900">Hall Management</h2>
-                    <p className="text-gray-600 mt-1">
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Hall Management</h2>
+                    <p className="text-gray-600 mt-1 dark:text-gray-400">
                         {halls.length} halls configured across {Object.keys(hallsByBlock).length} blocks
                     </p>
                 </div>
@@ -51,10 +51,10 @@ const HallManager = ({ halls, onEdit, onDelete, onAdd }: HallManagerProps) => {
             <div className="space-y-6">
                 {Object.entries(hallsByBlock).map(([block, blockHalls]) => (
                     <div key={block} className="card">
-                        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2 dark:text-white">
                             <div className="w-2 h-2 bg-primary-600 rounded-full" />
                             {block}
-                            <span className="text-sm font-normal text-gray-500 ml-2">
+                            <span className="text-sm font-normal text-gray-500 ml-2 dark:text-gray-400">
                                 ({blockHalls.length} halls)
                             </span>
                         </h3>
@@ -63,21 +63,21 @@ const HallManager = ({ halls, onEdit, onDelete, onAdd }: HallManagerProps) => {
                             {blockHalls.map((hall) => (
                                 <div
                                     key={hall.id}
-                                    className="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-colors"
+                                    className="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-colors dark:bg-gray-800/50 dark:hover:bg-gray-800"
                                 >
                                     <div className="flex items-start justify-between mb-3">
                                         <div>
-                                            <h4 className="text-lg font-semibold text-gray-900">
+                                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
                                                 {hall.name}
                                             </h4>
-                                            <p className="text-sm text-gray-600">
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">
                                                 {hall.rows} × {hall.columns} = {hall.capacity} seats
                                             </p>
                                         </div>
                                         <div className="flex gap-2">
                                             <button
                                                 onClick={() => onEdit(hall)}
-                                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-blue-400 dark:hover:bg-blue-900/20"
                                                 title="Edit hall"
                                             >
                                                 <Edit2 size={16} />
@@ -85,8 +85,8 @@ const HallManager = ({ halls, onEdit, onDelete, onAdd }: HallManagerProps) => {
                                             <button
                                                 onClick={() => handleDelete(hall.id)}
                                                 className={`p-2 rounded-lg transition-colors ${deleteConfirm === hall.id
-                                                        ? 'bg-red-600 text-white'
-                                                        : 'text-red-600 hover:bg-red-50'
+                                                    ? 'bg-red-600 text-white'
+                                                    : 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
                                                     }`}
                                                 title={deleteConfirm === hall.id ? 'Click again to confirm' : 'Delete hall'}
                                             >

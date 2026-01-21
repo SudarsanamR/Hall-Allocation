@@ -47,14 +47,11 @@ const Dashboard = () => {
         if (!file) return;
 
         const validTypes = [
-            'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'text/csv',
             'application/pdf',
         ];
 
-        if (!validTypes.includes(file.type) && !file.name.match(/\.(xlsx?|csv|pdf)$/i)) {
-            setError('Please upload a valid PDF (.pdf), Excel (.xlsx, .xls) or CSV (.csv) file');
+        if (!validTypes.includes(file.type) && !file.name.match(/\.pdf$/i)) {
+            setError('Please upload a valid PDF (.pdf) file');
             return;
         }
 
@@ -193,7 +190,7 @@ const Dashboard = () => {
                         Exam Seating Automation
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400">
-                        Upload your exam schedule PDF or Excel file to automatically generate allocations.
+                        Upload your exam schedule PDF directly from the university portal.
                     </p>
                 </div>
 
@@ -201,7 +198,7 @@ const Dashboard = () => {
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept=".xlsx,.xls,.csv,.pdf"
+                        accept=".pdf"
                         onChange={handleChange}
                         className="hidden"
                     />
@@ -230,10 +227,10 @@ const Dashboard = () => {
                         </div>
 
                         <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                            {uploading ? 'Processing File...' : 'Drop file here to upload'}
+                            {uploading ? 'Processing File...' : 'Drop PDF file here to upload'}
                         </h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Supported: PDF, Excel, CSV
+                            Supported: PDF
                         </p>
                     </div>
 
@@ -284,7 +281,7 @@ const Dashboard = () => {
                     </div>
 
                     {/* Stats */}
-                    {!isLoading && response && <StatCards stats={stats} />}
+
 
                     {/* Loading State */}
                     {isLoading && (
@@ -338,6 +335,11 @@ const Dashboard = () => {
                                         <span className="hidden sm:inline">Student List</span>
                                     </button>
                                 </div>
+                            </div>
+
+                            {/* Stats */}
+                            <div className="mt-8 mb-8">
+                                <StatCards stats={stats} />
                             </div>
 
                             {/* Seating Grid */}
