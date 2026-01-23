@@ -1,6 +1,8 @@
 import { Sun, Moon, Shield, GraduationCap, Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import gceeLogo from '../../assets/gcee-logo.png';
+import annaUnivLogo from '../../assets/anna-univ-logo.png';
 
 const TopBar = () => {
     const navigate = useNavigate();
@@ -27,7 +29,7 @@ const TopBar = () => {
             <div className="flex-shrink-0 flex items-center gap-2 md:gap-4 justify-start">
                 <a href="https://www.annauniv.edu" target="_blank" rel="noopener noreferrer">
                     <img
-                        src="https://www.freelogovectors.net/wp-content/uploads/2022/03/anna_university_logo_freelogovectors.net_.png"
+                        src={annaUnivLogo}
                         alt="Anna University"
                         className="h-12 md:h-20 w-auto object-contain drop-shadow-sm hover:scale-105 transition-transform cursor-pointer"
                     />
@@ -105,11 +107,7 @@ const TopBar = () => {
                 <div className="flex flex-shrink-0 border-l pl-2 md:pl-6 border-gray-200 dark:border-gray-700 h-10 md:h-16 items-center">
                     <a href="https://gcee.ac.in" target="_blank" rel="noopener noreferrer">
                         <img
-                            src="/gcee_logo.png"
-                            onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                e.currentTarget.parentElement!.innerText = 'GCEE';
-                            }}
+                            src={gceeLogo}
                             alt="GCEE"
                             className="h-10 md:h-20 w-auto object-contain drop-shadow-sm hover:scale-105 transition-transform cursor-pointer"
                         />
