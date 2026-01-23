@@ -57,7 +57,7 @@ jobs:
 
       - name: Move Backend Binary
         run: |
-          mkdir -p frontend/src-tauri/binaries
+          New-Item -ItemType Directory -Force -Path frontend/src-tauri/binaries
           copy backend/dist/backend.exe frontend/src-tauri/binaries/backend-x86_64-pc-windows-msvc.exe
 
       - name: Build Tauri App
