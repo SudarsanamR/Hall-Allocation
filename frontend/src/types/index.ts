@@ -24,6 +24,7 @@ export interface Seat {
     student: Student | null;
     subject?: string;
     department?: string;
+    seatNumber?: string;
 }
 
 // Seating Grid for a Hall

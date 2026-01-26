@@ -29,6 +29,7 @@ class Seat:
     student: Optional[Student] = None
     subject: Optional[str] = None
     department: Optional[str] = None
+    seatNumber: Optional[str] = None
 
 @dataclass
 class HallSeating:

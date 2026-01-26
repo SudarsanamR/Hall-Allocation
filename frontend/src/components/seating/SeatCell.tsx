@@ -61,8 +61,14 @@ const SeatCell = ({ seat, colorMap, isHighlighted, isMasked }: SeatCellProps) =>
                     <div className="font-bold text-sm mb-0.5 text-primary-300">{seat.student.registerNumber}</div>
                     <div className="text-gray-300">{seat.student.department} • {seat.student.subjectCode}</div>
                     <div className="text-gray-400 mt-1 pt-1 border-t border-gray-700 flex justify-between gap-4">
-                        <span>Row: {seat.row + 1}</span>
-                        <span>Seat: {seat.col + 1}</span>
+                        {seat.seatNumber ? (
+                            <span className="font-semibold text-primary-400">Seat Number: {seat.seatNumber}</span>
+                        ) : (
+                            <>
+                                <span>Row: {seat.row + 1}</span>
+                                <span>Seat: {seat.col + 1}</span>
+                            </>
+                        )}
                     </div>
                     {/* Arrow */}
                     <div

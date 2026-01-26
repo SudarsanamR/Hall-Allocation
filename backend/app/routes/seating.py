@@ -70,7 +70,8 @@ def generate_seating():
                                         'session': seat.student.session
                                     } if seat.student else None,
                                     'subject': seat.subject,
-                                    'department': seat.department
+                                    'department': seat.department,
+                                    'seatNumber': seat.seatNumber
                                 }
                                 for seat in row
                             ]
@@ -204,7 +205,8 @@ def search_student():
                                             'session': seat.student.session
                                         } if seat.student else None,
                                         'subject': seat.subject,
-                                        'department': seat.department
+                                        'department': seat.department,
+                                        'seatNumber': seat.seatNumber
                                     }
                                     for seat in row
                                 ]

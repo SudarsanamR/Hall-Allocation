@@ -83,6 +83,9 @@ def allocate_seats(students: List[Student], halls: List[Hall]) -> SeatingResult:
                     else:
                         # Odd column: Bottom -> Top
                         num = (c_idx * rows_in_hall) + (rows_in_hall - r_idx)
+                    
+                    # Assign seat number to Seat object
+                    seat.seatNumber = str(num)
 
                     allocation = StudentAllocation(
                         registerNumber=seat.student.registerNumber,
