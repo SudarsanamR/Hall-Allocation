@@ -74,19 +74,19 @@ def allocate_seats(students: List[Student], halls: List[Hall]) -> SeatingResult:
         
         for r_idx, row in enumerate(grid):
             for c_idx, seat in enumerate(row):
-                if seat.student:
-                    # Vertical Snake Numbering Logic
-                    rows_in_hall = hall.rows
-                    if c_idx % 2 == 0:
-                        # Even column: Top -> Bottom (e.g. 1 to rows)
-                        num = (c_idx * rows_in_hall) + r_idx + 1
-                    else:
-                        # Odd column: Bottom -> Top
-                        num = (c_idx * rows_in_hall) + (rows_in_hall - r_idx)
-                    
-                    # Assign seat number to Seat object
-                    seat.seatNumber = str(num)
+                # Vertical Snake Numbering Logic (Apply to ALL seats)
+                rows_in_hall = hall.rows
+                if c_idx % 2 == 0:
+                    # Even column: Top -> Bottom (e.g. 1 to rows)
+                    num = (c_idx * rows_in_hall) + r_idx + 1
+                else:
+                    # Odd column: Bottom -> Top
+                    num = (c_idx * rows_in_hall) + (rows_in_hall - r_idx)
+                
+                # Assign seat number to Seat object
+                seat.seatNumber = str(num)
 
+                if seat.student:
                     allocation = StudentAllocation(
                         registerNumber=seat.student.registerNumber,
                         department=seat.student.department,

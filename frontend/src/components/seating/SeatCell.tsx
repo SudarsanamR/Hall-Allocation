@@ -13,7 +13,7 @@ const SeatCell = ({ seat, colorMap, isHighlighted, isMasked }: SeatCellProps) =>
         return (
             <div className="relative group w-full aspect-square flex items-center justify-center">
                 <div className="w-[80%] h-[80%] border-2 border-gray-200 rounded-t-lg rounded-b-sm opacity-50 transition-all group-hover:border-primary-300 group-hover:scale-105"></div>
-                <span className="absolute text-[8px] text-gray-300 font-medium">{seat.row + 1}-{seat.col + 1}</span>
+                <span className="absolute text-[8px] text-gray-300 font-medium">{seat.seatNumber ?? `${seat.row + 1}-${seat.col + 1}`}</span>
             </div>
         );
     }
@@ -23,7 +23,7 @@ const SeatCell = ({ seat, colorMap, isHighlighted, isMasked }: SeatCellProps) =>
     const baseColor = colorMap.get(key) || 'bg-gray-200 text-gray-800';
 
     return (
-        <div className={`relative group w-full aspect-square flex items-center justify-center cursor-pointer p-0.5 ${isHighlighted ? 'z-20' : ''}`}>
+        <div className={`relative group w-full aspect-square flex items-center justify-center cursor-pointer p-1.5 ${isHighlighted ? 'z-20' : 'z-10'} hover:z-30`}>
 
 
 
@@ -54,7 +54,7 @@ const SeatCell = ({ seat, colorMap, isHighlighted, isMasked }: SeatCellProps) =>
                         absolute left-1/2 -translate-x-1/2 
                         ${seat.row < 2 ? 'top-full mt-2' : 'bottom-full mb-2'}
                         bg-gray-900/95 backdrop-blur-sm text-white px-3 py-2 rounded-lg text-xs 
-                        ${isHighlighted ? 'opacity-100' : 'opacity-0'} group-hover:opacity-100 
+                        opacity-0 group-hover:opacity-100 
                         pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl border border-gray-700
                     `}
                 >
