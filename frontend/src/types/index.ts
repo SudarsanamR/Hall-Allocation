@@ -78,6 +78,8 @@ export interface Stats {
     totalStudents: number;
     hallsUsed: number;
     sessions: number;
+    departmentBreakdown?: Record<string, number>;
+    subjectBreakdown?: Record<string, number>;
 }
 
 // Form Types

@@ -47,15 +47,33 @@ const SeatCell = ({ seat, colorMap, isHighlighted, isMasked }: SeatCellProps) =>
             </div>
 
             {/* Hover Tooltip - Movie Style (Only if not masked) */}
+            {/* Hover Tooltip - Movie Style (Only if not masked) */}
             {!isMasked && (
-                <div className={`absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur-sm text-white px-3 py-2 rounded-lg text-xs ${isHighlighted ? 'opacity-100' : 'opacity-0'} group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl border border-gray-700`}>
+                <div
+                    className={`
+                        absolute left-1/2 -translate-x-1/2 
+                        ${seat.row < 2 ? 'top-full mt-2' : 'bottom-full mb-2'}
+                        bg-gray-900/95 backdrop-blur-sm text-white px-3 py-2 rounded-lg text-xs 
+                        ${isHighlighted ? 'opacity-100' : 'opacity-0'} group-hover:opacity-100 
+                        pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl border border-gray-700
+                    `}
+                >
                     <div className="font-bold text-sm mb-0.5 text-primary-300">{seat.student.registerNumber}</div>
                     <div className="text-gray-300">{seat.student.department} • {seat.student.subjectCode}</div>
                     <div className="text-gray-400 mt-1 pt-1 border-t border-gray-700 flex justify-between gap-4">
                         <span>Row: {seat.row + 1}</span>
                         <span>Seat: {seat.col + 1}</span>
                     </div>
-                    <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45 border-r border-b border-gray-700"></div>
+                    {/* Arrow */}
+                    <div
+                        className={`
+                            absolute left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45 
+                            ${seat.row < 2
+                                ? 'top-[-5px] border-l border-t border-gray-700'
+                                : 'bottom-[-5px] border-r border-b border-gray-700'
+                            }
+                        `}
+                    ></div>
                 </div>
             )}
         </div>

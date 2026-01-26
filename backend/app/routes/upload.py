@@ -83,3 +83,9 @@ def get_students():
         } for s in db.students
     ]
     return jsonify(students), 200
+
+@bp.route('/reset', methods=['DELETE'])
+def reset_data():
+    """Reset all student data and seating results"""
+    db.reset_students()
+    return jsonify({'success': True, 'message': 'All data has been reset'}), 200

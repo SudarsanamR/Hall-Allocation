@@ -2,24 +2,469 @@
 import pandas as pd
 from io import BytesIO
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
 from app.models import SeatingResult, HallSeating
+from collections import defaultdict
+
+# Shared styles
+TITLE_FONT = Font(name='Times New Roman', size=12, bold=True)
+HEADER_FONT = Font(name='Times New Roman', size=10, bold=True)
+DATA_FONT = Font(name='Times New Roman', size=10)
+CENTER_ALIGN = Alignment(horizontal='center', vertical='center')
+LEFT_ALIGN = Alignment(horizontal='left', vertical='center')
+WRAP_CENTER_ALIGN = Alignment(horizontal='center', vertical='center', wrap_text=True)
+BORDER_STYLE = Side(style='thin')
+FULL_BORDER = Border(left=BORDER_STYLE, right=BORDER_STYLE, top=BORDER_STYLE, bottom=BORDER_STYLE)
+
+
+def get_snake_seat_number(row_idx: int, col_idx: int, num_rows: int) -> int:
+    """Calculate seat number using vertical snake pattern."""
+    if col_idx % 2 == 0:  # Even columns (0, 2, 4...): top to bottom
+        return (col_idx * num_rows) + row_idx + 1
+    else:  # Odd columns (1, 3, 5...): bottom to top
+        return (col_idx * num_rows) + (num_rows - row_idx)
+
+
+def get_exam_info(seating_result: SeatingResult) -> tuple:
+    """Extract exam date and session from first student."""
+    exam_date = "NOV/DEC 2025"
+    session = "FN"
+    date_str = ""
+    for hall_seating in seating_result.halls:
+        for row in hall_seating.grid:
+            for seat in row:
+                if seat.student:
+                    exam_date = seat.student.examDate or exam_date
+                    session = seat.student.session or session
+                    date_str = exam_date
+                    return exam_date, session, date_str
+    return exam_date, session, date_str
+
 
 def generate_hall_wise_excel(seating_result: SeatingResult) -> BytesIO:
     """
-    Generate Excel file with hall-wise seating arrangement in 'Hall Sketch' format.
-    Transposes rows to columns (Vertical Rows).
+    Generate Excel file with all sheets matching the reference format.
+    Sheets: SEATING, HALL ALLO, NB, aud seating, Sheet1
     """
     output = BytesIO()
+    wb = Workbook()
     
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        for hall_seating in seating_result.halls:
-            _write_hall_sketch(writer, hall_seating, seating_result)
+    exam_date, session, date_str = get_exam_info(seating_result)
     
+    # Collect data for all sheets
+    hall_data = []  # For HALL ALLO sheet
+    dept_data = defaultdict(lambda: {'students': [], 'halls': defaultdict(list)})  # For NB sheet
+    regular_halls = []
+    auditorium_halls = []
+    
+    for hall_seating in seating_result.halls:
+        if hall_seating.studentsCount == 0:
+            continue
+        
+        hall = hall_seating.hall
+        is_auditorium = 'AUD' in hall.name.upper() or hall.name.upper().startswith('A')
+        
+        if is_auditorium:
+            auditorium_halls.append(hall_seating)
+        else:
+            regular_halls.append(hall_seating)
+        
+        # Collect data for HALL ALLO and NB sheets
+        subject_counts = defaultdict(int)
+        for row in hall_seating.grid:
+            for seat in row:
+                if seat.student:
+                    subject_counts[seat.student.subjectCode] += 1
+                    dept = seat.student.department
+                    dept_data[dept]['students'].append(seat.student.registerNumber)
+                    dept_data[dept]['halls'][hall.name].append(seat.student.registerNumber)
+        
+        hall_data.append({
+            'hall': hall.name,
+            'subjects': subject_counts,
+            'total': hall_seating.studentsCount
+        })
+    
+    # === SHEET 1: SEATING (Regular halls) ===
+    ws_seating = wb.active
+    ws_seating.title = "SEATING"
+    _write_seating_sheet(ws_seating, regular_halls, exam_date, session)
+    
+    # === SHEET 2: HALL ALLO ===
+    ws_hall_allo = wb.create_sheet("HALL ALLO")
+    _write_hall_allo_sheet(ws_hall_allo, hall_data, date_str, session)
+    
+    # === SHEET 3: NB (Department breakdown) ===
+    ws_nb = wb.create_sheet("NB")
+    _write_nb_sheet(ws_nb, dept_data, date_str, session)
+    
+    # === SHEET 4: aud seating (Auditorium layout) ===
+    if auditorium_halls:
+        ws_aud = wb.create_sheet("aud seating")
+        _write_auditorium_sheet(ws_aud, auditorium_halls, exam_date, session)
+    
+    # === SHEET 5: Sheet1 (Planning grid) ===
+    ws_plan = wb.create_sheet("Sheet1")
+    _write_planning_sheet(ws_plan, dept_data, seating_result.halls)
+    
+    wb.save(output)
     output.seek(0)
     return output
 
+
+def _write_seating_sheet(ws, halls, exam_date, session):
+    """Write the SEATING sheet with hall sketches."""
+    current_row = 1
+    row_numerals = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
+    
+    for hall_seating in halls:
+        hall = hall_seating.hall
+        grid = hall_seating.grid
+        num_cols = hall.columns
+        num_rows = hall.rows
+        excel_data_cols = num_cols * 2
+        
+        # Title row
+        title_text = "GCE : : ERODE - 638 316 - ANNA UNIVERSITY EXAMS - HALL  SKETCH - NOV/DEC 2025"
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=excel_data_cols)
+        title_cell = ws.cell(row=current_row, column=1, value=title_text)
+        title_cell.font = TITLE_FONT
+        title_cell.alignment = CENTER_ALIGN
+        current_row += 1
+        
+        # Hall info row
+        ws.cell(row=current_row, column=1, value=f"HALL NO : {hall.name}").font = HEADER_FONT
+        date_col = (excel_data_cols // 2) + 1
+        ws.cell(row=current_row, column=date_col, value=f"Date & Session :  {exam_date} {session}").font = HEADER_FONT
+        current_row += 1
+        
+        # Column headers
+        for col_idx in range(num_cols):
+            excel_col = (col_idx * 2) + 1
+            roman = row_numerals[col_idx] if col_idx < len(row_numerals) else str(col_idx + 1)
+            header_text = f"{roman} - ROW with Seat No"
+            cell = ws.cell(row=current_row, column=excel_col, value=header_text)
+            cell.font = HEADER_FONT
+            cell.alignment = WRAP_CENTER_ALIGN
+            ws.column_dimensions[get_column_letter(excel_col)].width = 15
+            ws.column_dimensions[get_column_letter(excel_col + 1)].width = 6
+        current_row += 1
+        
+        # Data rows and department tracking
+        dept_students = defaultdict(list)
+        
+        for row_idx in range(num_rows):
+            for col_idx in range(num_cols):
+                excel_col = (col_idx * 2) + 1
+                data_row = current_row + row_idx
+                
+                seat = grid[row_idx][col_idx] if row_idx < len(grid) and col_idx < len(grid[row_idx]) else None
+                
+                reg_cell = ws.cell(row=data_row, column=excel_col)
+                seat_num_cell = ws.cell(row=data_row, column=excel_col + 1)
+                seat_number = get_snake_seat_number(row_idx, col_idx, num_rows)
+                
+                if seat and seat.student:
+                    reg_cell.value = seat.student.registerNumber
+                    dept_students[seat.student.department].append(seat.student.registerNumber)
+                else:
+                    reg_cell.value = ""
+                
+                seat_num_cell.value = seat_number
+                
+                for c in [reg_cell, seat_num_cell]:
+                    c.font = DATA_FONT
+                    c.alignment = CENTER_ALIGN
+                    c.border = FULL_BORDER
+        
+        current_row += num_rows + 1
+        
+        # Department summary
+        for dept, students in sorted(dept_students.items()):
+            students_sorted = sorted(students)
+            range_text = students_sorted[0] if len(students_sorted) == 1 else f"{students_sorted[0]} TO {students_sorted[-1]}"
+            
+            dept_display = f"7 {dept}" if not dept.startswith("7") else dept
+            ws.cell(row=current_row, column=1, value=dept_display).font = DATA_FONT
+            ws.merge_cells(start_row=current_row, start_column=2, end_row=current_row, end_column=9)
+            range_cell = ws.cell(row=current_row, column=2, value=range_text)
+            range_cell.font = DATA_FONT
+            range_cell.alignment = LEFT_ALIGN
+            ws.cell(row=current_row, column=excel_data_cols, value=len(students)).font = DATA_FONT
+            current_row += 1
+        
+        # TOTAL row
+        ws.cell(row=current_row, column=excel_data_cols - 1, value="TOTAL").font = HEADER_FONT
+        ws.cell(row=current_row, column=excel_data_cols, value=hall_seating.studentsCount).font = HEADER_FONT
+        current_row += 2
+
+
+def _write_hall_allo_sheet(ws, hall_data, date_str, session):
+    """Write the HALL ALLO sheet with hall allocation summary."""
+    # Headers
+    headers = ["HALL", "DEPT", "SUBJECT", "TOTAL"]
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = HEADER_FONT
+        cell.alignment = CENTER_ALIGN
+        cell.border = FULL_BORDER
+    
+    # Set column widths
+    ws.column_dimensions['A'].width = 12
+    ws.column_dimensions['B'].width = 10
+    ws.column_dimensions['C'].width = 40
+    ws.column_dimensions['D'].width = 8
+    
+    current_row = 2
+    for hall_info in hall_data:
+        hall_name = hall_info['hall']
+        subjects = hall_info['subjects']
+        total = hall_info['total']
+        
+        num_subjects = len(subjects)
+        # Reserve rows: subjects + 1 empty row (for spacing before TOTAL row)
+        data_rows = max(num_subjects, 4)  # Minimum 4 rows for visual consistency
+        
+        start_row = current_row
+        end_row = current_row + data_rows - 1
+        
+        # Merge HALL column for all subject rows
+        if data_rows > 1:
+            ws.merge_cells(start_row=start_row, start_column=1, end_row=end_row, end_column=1)
+        
+        hall_cell = ws.cell(row=start_row, column=1, value=hall_name)
+        hall_cell.font = DATA_FONT
+        hall_cell.alignment = CENTER_ALIGN
+        hall_cell.border = FULL_BORDER
+        
+        # Apply borders to merged cells
+        for r in range(start_row, end_row + 1):
+            ws.cell(row=r, column=1).border = FULL_BORDER
+            ws.cell(row=r, column=2).border = FULL_BORDER
+            ws.cell(row=r, column=3).border = FULL_BORDER
+            ws.cell(row=r, column=4).border = FULL_BORDER
+        
+        # Write subjects
+        for i, (subject, count) in enumerate(subjects.items()):
+            ws.cell(row=start_row + i, column=3, value=subject).font = DATA_FONT
+            ws.cell(row=start_row + i, column=4, value=count).font = DATA_FONT
+        
+        current_row = end_row + 1
+        
+        # Date/session and TOTAL row
+        date_cell = ws.cell(row=current_row, column=1, value=f"{date_str} {session}")
+        date_cell.font = DATA_FONT
+        date_cell.border = FULL_BORDER
+        ws.cell(row=current_row, column=2).border = FULL_BORDER
+        ws.cell(row=current_row, column=3, value="TOTAL:").font = HEADER_FONT
+        ws.cell(row=current_row, column=3).border = FULL_BORDER
+        ws.cell(row=current_row, column=4, value=total).font = HEADER_FONT
+        ws.cell(row=current_row, column=4).border = FULL_BORDER
+        current_row += 1
+
+
+def _write_nb_sheet(ws, dept_data, date_str, session):
+    """Write the NB sheet with department-wise breakdown."""
+    # Title
+    ws.merge_cells('A1:E1')
+    title_cell = ws.cell(row=1, column=1, value="GCE : : ERODE - ANNA UNIVERSITY EXAMS - NOV/DEC 2025")
+    title_cell.font = TITLE_FONT
+    title_cell.alignment = CENTER_ALIGN
+    
+    ws.merge_cells('A2:E2')
+    ws.cell(row=2, column=1, value="HALL ALLOCATION").font = HEADER_FONT
+    
+    ws.cell(row=4, column=1, value=f"DATE & SESSION  :  {date_str} {session}").font = HEADER_FONT
+    
+    current_row = 6
+    
+    # Set column widths
+    ws.column_dimensions['A'].width = 45
+    ws.column_dimensions['B'].width = 8
+    ws.column_dimensions['C'].width = 10
+    
+    for dept, data in sorted(dept_data.items()):
+        students = sorted(data['students'])
+        total = len(students)
+        
+        # Department header
+        dept_display = f"7 {dept}" if not dept.startswith("7") else dept
+        ws.cell(row=current_row, column=1, value=f"DEPARTMENT / SEMESTER  :    {dept_display}").font = HEADER_FONT
+        ws.cell(row=current_row, column=2, value="TOTAL :").font = HEADER_FONT
+        ws.cell(row=current_row, column=3, value=total).font = HEADER_FONT
+        current_row += 1
+        
+        ws.cell(row=current_row, column=1, value="REGISTER NUMBERS").font = HEADER_FONT
+        ws.cell(row=current_row, column=3, value="HALL").font = HEADER_FONT
+        current_row += 1
+        
+        # Hall-wise register numbers
+        for hall_name, hall_students in sorted(data['halls'].items()):
+            hall_students_sorted = sorted(hall_students)
+            count = len(hall_students_sorted)
+            
+            if count == 1:
+                range_text = hall_students_sorted[0]
+            elif count <= 3:
+                range_text = ", ".join(hall_students_sorted)
+            else:
+                range_text = f"{hall_students_sorted[0]} TO {hall_students_sorted[-1]}"
+            
+            ws.cell(row=current_row, column=1, value=range_text).font = DATA_FONT
+            ws.cell(row=current_row, column=2, value=count).font = DATA_FONT
+            ws.cell(row=current_row, column=3, value=hall_name).font = DATA_FONT
+            current_row += 1
+        
+        current_row += 1  # Empty row between departments
+
+
+def _write_auditorium_sheet(ws, auditorium_halls, exam_date, session):
+    """Write the auditorium seating sheet (3 cols x 9 rows, 25 seats)."""
+    current_row = 1
+    row_numerals = ["I", "II", "III"]
+    
+    for hall_seating in auditorium_halls:
+        hall = hall_seating.hall
+        grid = hall_seating.grid
+        
+        # Auditorium specific: 3 columns, 9 rows, 25 total seats
+        # The pattern has XXX markers for missing seats
+        num_cols = 3
+        num_rows = 9
+        excel_data_cols = num_cols * 2
+        
+        # Title
+        title_text = "GCE : : ERODE - 638 316 - ANNA UNIVERSITY EXAMS - \nHALL  SKETCH - NOV/DEC 2025"
+        ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=excel_data_cols)
+        title_cell = ws.cell(row=current_row, column=1, value=title_text)
+        title_cell.font = TITLE_FONT
+        title_cell.alignment = CENTER_ALIGN
+        current_row += 1
+        
+        # Hall info
+        ws.cell(row=current_row, column=1, value=f"HALL NO : {hall.name}").font = HEADER_FONT
+        ws.cell(row=current_row, column=4, value=f"Date & Session :  {exam_date} {session}").font = HEADER_FONT
+        current_row += 1
+        
+        # Column headers
+        for col_idx in range(num_cols):
+            excel_col = (col_idx * 2) + 1
+            roman = row_numerals[col_idx]
+            header_text = f"{roman} - ROW with Seat No"
+            cell = ws.cell(row=current_row, column=excel_col, value=header_text)
+            cell.font = HEADER_FONT
+            cell.alignment = WRAP_CENTER_ALIGN
+            ws.column_dimensions[get_column_letter(excel_col)].width = 15
+            ws.column_dimensions[get_column_letter(excel_col + 1)].width = 6
+        current_row += 1
+        
+        # XXX row for first row (missing seats indicator)
+        for col_idx in range(num_cols - 1):  # First two columns have XXX in row 0
+            excel_col = (col_idx * 2) + 1
+            ws.cell(row=current_row, column=excel_col, value="XXX").font = DATA_FONT
+        current_row += 1
+        
+        # Auditorium seat numbering (special pattern)
+        # Column 1: 1-8 (rows 1-8)
+        # Column 2: 16-9 (rows 1-8, reversed)
+        # Column 3: 17-25 (rows 0-8)
+        dept_students = defaultdict(list)
+        
+        for row_idx in range(8):  # 8 data rows after XXX
+            data_row = current_row + row_idx
+            
+            # Column 1: seats 1-8
+            seat_num_col1 = row_idx + 1
+            excel_col = 1
+            
+            grid_row = row_idx + 1 if row_idx + 1 < len(grid) else None
+            if grid_row and grid_row < len(grid) and 0 < len(grid[grid_row]):
+                seat = grid[grid_row][0]
+                if seat and seat.student:
+                    ws.cell(row=data_row, column=excel_col, value=seat.student.registerNumber).font = DATA_FONT
+                    dept_students[seat.student.department].append(seat.student.registerNumber)
+            ws.cell(row=data_row, column=excel_col + 1, value=seat_num_col1).font = DATA_FONT
+            
+            # Column 2: seats 16-9 (reversed)
+            seat_num_col2 = 16 - row_idx
+            excel_col = 3
+            
+            if grid_row and grid_row < len(grid) and 1 < len(grid[grid_row]):
+                seat = grid[grid_row][1]
+                if seat and seat.student:
+                    ws.cell(row=data_row, column=excel_col, value=seat.student.registerNumber).font = DATA_FONT
+                    dept_students[seat.student.department].append(seat.student.registerNumber)
+            ws.cell(row=data_row, column=excel_col + 1, value=seat_num_col2).font = DATA_FONT
+            
+            # Column 3: seats 17-24
+            seat_num_col3 = 17 + row_idx
+            excel_col = 5
+            
+            if grid_row and grid_row < len(grid) and 2 < len(grid[grid_row]):
+                seat = grid[grid_row][2]
+                if seat and seat.student:
+                    ws.cell(row=data_row, column=excel_col, value=seat.student.registerNumber).font = DATA_FONT
+                    dept_students[seat.student.department].append(seat.student.registerNumber)
+            ws.cell(row=data_row, column=excel_col + 1, value=seat_num_col3).font = DATA_FONT
+        
+        current_row += 8
+        
+        # Last row: XXX, XXX, seat 25
+        ws.cell(row=current_row, column=1, value="XXX").font = DATA_FONT
+        ws.cell(row=current_row, column=3, value="XXX").font = DATA_FONT
+        if len(grid) > 0 and len(grid[0]) > 2:
+            seat = grid[0][2]
+            if seat and seat.student:
+                ws.cell(row=current_row, column=5, value=seat.student.registerNumber).font = DATA_FONT
+                dept_students[seat.student.department].append(seat.student.registerNumber)
+        ws.cell(row=current_row, column=6, value=25).font = DATA_FONT
+        current_row += 2
+        
+        # Department summary
+        for dept, students in sorted(dept_students.items()):
+            students_sorted = sorted(students)
+            range_text = students_sorted[0] if len(students_sorted) == 1 else f"{students_sorted[0]} TO {students_sorted[-1]}"
+            dept_display = f"7 {dept}" if not dept.startswith("7") else dept
+            ws.cell(row=current_row, column=1, value=dept_display).font = DATA_FONT
+            ws.cell(row=current_row, column=2, value=range_text).font = DATA_FONT
+            ws.cell(row=current_row, column=6, value=len(students)).font = DATA_FONT
+            current_row += 1
+        
+        ws.cell(row=current_row, column=5, value="TOTAL").font = HEADER_FONT
+        ws.cell(row=current_row, column=6, value=hall_seating.studentsCount).font = HEADER_FONT
+        current_row += 2
+
+
+def _write_planning_sheet(ws, dept_data, all_halls):
+    """Write the Sheet1 planning/balance grid."""
+    # Header row with departments
+    depts = sorted(dept_data.keys())
+    
+    ws.cell(row=1, column=1, value="Total").font = HEADER_FONT
+    for col, dept in enumerate(depts, 2):
+        ws.cell(row=1, column=col, value=len(dept_data[dept]['students'])).font = DATA_FONT
+    
+    ws.cell(row=4, column=1, value="Balance").font = HEADER_FONT
+    for col, dept in enumerate(depts, 2):
+        ws.cell(row=4, column=col, value=0).font = DATA_FONT  # All allocated
+    
+    # Hall rows
+    row = 5
+    for hall_seating in all_halls:
+        if hall_seating.studentsCount == 0:
+            continue
+        ws.cell(row=row, column=1, value=hall_seating.hall.name).font = DATA_FONT
+        row += 1
+    
+    # Column widths
+    ws.column_dimensions['A'].width = 10
+    for col in range(2, len(depts) + 2):
+        ws.column_dimensions[get_column_letter(col)].width = 8
+
+
 def generate_student_wise_excel(seating_result: SeatingResult) -> BytesIO:
-    # ... (Same as before, keep implementation or re-include it)
+    """Generate Excel file with student-wise allocation list."""
     output = BytesIO()
     data = []
     for allocation in seating_result.studentAllocation:
@@ -43,119 +488,3 @@ def generate_student_wise_excel(seating_result: SeatingResult) -> BytesIO:
             
     output.seek(0)
     return output
-
-def _write_hall_sketch(writer, hall_seating, result_context):
-    hall = hall_seating.hall
-    grid = hall_seating.grid
-    
-    # Create the sheet
-    sheet_name = hall.name[:31]
-    # We will write directly using openpyxl for complex formatted headers
-    # Create a dummy dataframe to initialize sheet
-    df_dummy = pd.DataFrame()
-    df_dummy.to_excel(writer, sheet_name=sheet_name, index=False)
-    
-    worksheet = writer.sheets[sheet_name]
-    
-    # Styles
-    bold_center = Alignment(horizontal='center', vertical='center', wrap_text=True)
-    header_font = Font(name='Calibri', size=11, bold=True)
-    title_font = Font(name='Calibri', size=14, bold=True, underline='single')
-    border_style = Side(style='thin')
-    full_border = Border(left=border_style, right=border_style, top=border_style, bottom=border_style)
-    
-    # 1. Main Title
-    # Extract date from first student if available
-    exam_date = "NOV/DEC 2025" # Default
-    session = "FN"
-    for row in grid:
-        for seat in row:
-            if seat.student:
-                exam_date_obj = seat.student.examDate
-                session = seat.student.session
-                break
-    
-    # Row 1: Main Title
-    worksheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=hall.rows * 2)
-    title_cell = worksheet.cell(row=1, column=1)
-    title_cell.value = "GCE : : ERODE - 638 316 - ANNA UNIVERSITY EXAMS - HALL SKETCH - " + "2025"
-    title_cell.font = title_font
-    title_cell.alignment = bold_center
-    
-    # Row 2: Hall Info and Date
-    # "HALL NO : <Name>" at left ----- "Date & Session : <Date> <Session>" at right?
-    # Reference shows Hall No at Col A, Date at Col C?
-    worksheet['A2'] = f"HALL NO : {hall.name}"
-    worksheet['A2'].font = header_font
-    
-    # Calculate merged center for date
-    mid_point = (hall.rows * 2) // 2
-    worksheet.cell(row=2, column=mid_point).value = f"Date & Session : {exam_date} {session}"
-    
-    # Row 3: Column Headers (Which represent Physical Rows)
-    # Pairs of columns: "I - ROW with Seat No", "Empty" (merged?)
-    # Reference: "I - ROW with Seat No" takes up one column?
-    # Sample: Col A: "I - ROW...", Col B: NaN (Seat numbers in data row?)
-    # Let's assume Col A is Reg No, Col B is Seat No. Title "I - ROW with Seat No" spans A & B? 
-    # Or just sits in A. Let's merge for better look.
-    
-    row_numerals = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
-    
-    start_data_row = 4
-    
-    for r_idx in range(hall.rows):
-        # Calculate Excel columns for this Physical Row
-        # Physical Row 0 -> Excel Cols A, B (Idx 1, 2)
-        # Physical Row 1 -> Excel Cols C, D (Idx 3, 4)
-        col_start = (r_idx * 2) + 1
-        col_end = col_start + 1
-        
-        # Header: "X - ROW with Seat No"
-        roman = row_numerals[r_idx] if r_idx < len(row_numerals) else f"{r_idx+1}"
-        header_text = f"{roman} - ROW with Seat No"
-        
-        # Merge for header
-        cell = worksheet.cell(row=3, column=col_start)
-        cell.value = header_text
-        cell.font = header_font
-        cell.alignment = bold_center
-        # worksheet.merge_cells(start_row=3, start_column=col_start, end_row=3, end_column=col_end) 
-        # Actually reference shows "Seat No" is explicit in data, maybe implicit in header?
-        # Let's put header in Left cell, leave Right cell empty or merge?
-        # Reference has "Unnamed: 1" as NaN, so likely merged or just overflow.
-        
-        # Column Widths
-        worksheet.column_dimensions[chr(64 + col_start)].width = 15 # Student Reg No
-        worksheet.column_dimensions[chr(64 + col_end)].width = 5    # Seat No
-        
-        # Fill Data
-        # Physical Row `r_idx` has seats 0 to hall.columns-1
-        # In Excel, these go vertically down from `start_data_row`
-        
-        if r_idx < len(grid):
-            p_row = grid[r_idx]
-            for c_idx, seat in enumerate(p_row):
-                # Data Row index
-                d_row = start_data_row + c_idx
-                
-                # Reg No Cell
-                reg_cell = worksheet.cell(row=d_row, column=col_start)
-                seat_cell = worksheet.cell(row=d_row, column=col_end)
-                
-                if seat.student:
-                    reg_cell.value = seat.student.registerNumber
-                else:
-                    reg_cell.value = ""
-                
-                # Seat Number (Calculated: Row * Cols + Col + 1)
-                # Or just sequential?
-                # Physical Seat Num = (r_idx * hall.columns) + c_idx + 1
-                seat_num = (r_idx * hall.columns) + c_idx + 1
-                seat_cell.value = seat_num
-                
-                # Styles
-                reg_cell.alignment = Alignment(horizontal='center')
-                seat_cell.alignment = Alignment(horizontal='center')
-                reg_cell.border = full_border
-                seat_cell.border = full_border
-

@@ -107,6 +107,17 @@ const AdminDashboard = () => {
         setError(null);
         try {
             const res = await generateSeating();
+            // Sort sessions: FN before AN (within same date)
+            const sortedSessions = [...res.sessions].sort((a, b) => {
+                // Extract date and session type
+                const aIsFN = a.includes('FN');
+                const bIsFN = b.includes('FN');
+                // If same session type, sort alphabetically (by date)
+                if (aIsFN === bIsFN) return a.localeCompare(b);
+                // FN comes before AN
+                return aIsFN ? -1 : 1;
+            });
+            res.sessions = sortedSessions;
             setResponse(res);
             // Preserve session or default to first
             if (res.sessions.length > 0) {
@@ -132,10 +143,24 @@ const AdminDashboard = () => {
     const currentResult: SeatingResult | null =
         response && selectedSession ? response.results[selectedSession] : null;
 
+    // Calculate department breakdown
+    const departmentBreakdown = currentResult?.studentAllocation.reduce((acc, curr) => {
+        acc[curr.department] = (acc[curr.department] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
+    // Calculate subject breakdown
+    const subjectBreakdown = currentResult?.studentAllocation.reduce((acc, curr) => {
+        acc[curr.subject] = (acc[curr.subject] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
     const stats: Stats = {
         totalStudents: currentResult?.totalStudents || 0,
         hallsUsed: currentResult?.hallsUsed || 0,
         sessions: response?.sessions.length || 0,
+        departmentBreakdown,
+        subjectBreakdown,
     };
 
     // Color map logic
