@@ -39,7 +39,7 @@ const SeatingGrid = ({ hallSeating, colorMap, highlightStudentId }: SeatingGridP
             {/* Seating Layout */}
             <div className="overflow-x-auto pb-4 custom-scrollbar flex justify-center">
                 <div
-                    className="grid gap-x-3 gap-y-4 min-w-min px-4 md:px-8"
+                    className="grid gap-x-3 gap-y-4 min-w-min p-4 md:p-8"
                     style={{
                         gridTemplateColumns: `repeat(${hall.columns}, minmax(40px, 1fr))`,
                     }}

@@ -83,4 +83,4 @@ def get_dept_from_code(code):
         '159': 'CSE(DS)',
         '205': 'IT',
     }
-    return mapping.get(code, 'UNKNOWN')
+    return mapping.get(code, str(code))

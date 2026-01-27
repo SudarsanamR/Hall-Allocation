@@ -147,7 +147,7 @@ const StudentDashboard = () => {
                                                     Seat Number
                                                 </p>
                                                 <div className="flex items-baseline gap-2">
-                                                    <p className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
+                                                    <p className="text-xl font-black text-gray-900 dark:text-white tracking-tight">
                                                         {alloc.seatNumber}
                                                     </p>
                                                 </div>

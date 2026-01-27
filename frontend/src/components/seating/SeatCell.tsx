@@ -18,7 +18,7 @@ const SeatCell = ({ seat, colorMap, isHighlighted, isMasked }: SeatCellProps) =>
         );
     }
 
-    const key = seat.subject || seat.department || 'default';
+    const key = seat.student.department || 'default';
     // Mapping bg colors to lighter shades for seat body
     const baseColor = colorMap.get(key) || 'bg-gray-200 text-gray-800';
 
@@ -41,7 +41,7 @@ const SeatCell = ({ seat, colorMap, isHighlighted, isMasked }: SeatCellProps) =>
                 `}
             >
                 <div className="w-8 h-1 bg-black/5 rounded-full mb-1"></div>
-                <span className="text-[10px] font-bold truncate px-1 max-w-full">
+                <span className="text-sm font-bold truncate px-1 max-w-full">
                     {isMasked ? '• • •' : seat.student.registerNumber.slice(-3)}
                 </span>
             </div>
@@ -62,7 +62,7 @@ const SeatCell = ({ seat, colorMap, isHighlighted, isMasked }: SeatCellProps) =>
                     <div className="text-gray-300">{seat.student.department} • {seat.student.subjectCode}</div>
                     <div className="text-gray-400 mt-1 pt-1 border-t border-gray-700 flex justify-between gap-4">
                         {seat.seatNumber ? (
-                            <span className="font-semibold text-primary-400">Seat Number: {seat.seatNumber}</span>
+                            <span className="font-semibold text-primary-400">Seat: {seat.seatNumber}</span>
                         ) : (
                             <>
                                 <span>Row: {seat.row + 1}</span>

@@ -59,7 +59,8 @@ def generate_seating():
                         },
                         'grid': [
                             [
-                                {
+                                # DEBUG LOGGING
+                                print(f"DEBUG: Processing Seat [{seat.row},{seat.col}] - SeatNo: {seat.seatNumber}") or {
                                     'row': seat.row,
                                     'col': seat.col,
                                     'student': {

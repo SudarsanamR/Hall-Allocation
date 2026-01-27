@@ -1,89 +1,112 @@
 """
 Seating Algorithm Implementation
 
-CRITICAL LOGIC:
-- Active Pair Strategy (Subject Mixing): Limits mixing to 2 subjects at a time.
-- Internal Department Mixing: Within each Subject Group, students are Round-Robin mixed by Department.
-    - Ensures that if Subject A (95%) fills the hall, A(CSE) sits next to A(IT) etc.
-- Fills Hall using Vertical Snake Pattern.
-- Intelligent Spacers: Used if Department Mixing also fails (same dept, same subject).
-- Conflict Fallback: Allowed if packed.
+LOGIC:
+1. Grouping:
+   - Default: Group by DEPARTMENT.
+   - Exception: If Single Department, Group by SUBJECT.
+
+2. Mode Selection:
+   - SPACER MODE: Used if (Unique Subjects == 1) AND (Total Capacity >= 2 * Total Students).
+     - Strategy: Fill sequentially (Group A, then B...) but insert Empty Seat after every student.
+   - MIXING MODE: Used otherwise.
+     - Strategy: Pick pairs (Alphabetical), Start with Largest, Interleave A-B-A-B.
+     - Depletion: If 'A' runs out, immediately replace with next largest group 'C'.
+
+3. Filling Pattern:
+   - Vertical Snake: Col 0 (Down), Col 1 (Up), Col 2 (Down)...
+
+4. Sorting:
+   - Students are sorted naturally by Register Number (1, 2, ... 10) to ensure consistent Snake filling order.
 """
-from typing import List, Dict, Set, Tuple, Optional
+from typing import List, Dict, Tuple, Optional
 from collections import defaultdict
 from app.models import Hall, Student, Seat, HallSeating, StudentAllocation, SeatingResult
 
 def allocate_seats(students: List[Student], halls: List[Hall]) -> SeatingResult:
-    """
-    Main seating allocation function using Active Pair with Dept Mixing
-    """
+    """Main allocation function."""
     if not students:
         raise ValueError("No students to allocate")
-    
     if not halls:
         raise ValueError("No halls available")
+
+    # Sort master list for consistency
+    # Use valid natural sort for register numbers (try int, fallback to str)
+    def natural_key(s: Student):
+        reg = s.registerNumber.strip()
+        # Try to convert to int for sorting if purely numeric
+        if reg.isdigit():
+            return (s.department, s.subjectCode, int(reg))
+        return (s.department, s.subjectCode, reg)
+
+    sorted_students = sorted(students, key=natural_key)
+
+    # --- 1. Determine Grouping Strategy ---
+    unique_depts = set(s.department.strip() for s in sorted_students)
+    unique_subjects = set(s.subjectCode.strip() for s in sorted_students)
+
+    if len(unique_depts) > 1:
+        # Multiple Departments -> Group by Department
+        group_key_fn = lambda s: s.department.strip()
+    else:
+        # Single Department -> Group by Subject
+        group_key_fn = lambda s: s.subjectCode.strip()
+
+    # Build Groups (Mutable Lists)
+    groups_dict = defaultdict(list)
+    for s in sorted_students:
+        groups_dict[group_key_fn(s)].append(s)
     
+    # Filter empty groups
+    available_groups = {k: v for k, v in groups_dict.items() if v}
+
+    # --- 2. Determine Mode (Spacers vs Mixing) ---
+    total_students = len(sorted_students)
     total_capacity = sum(h.capacity for h in halls)
     
-    sorted_students = sorted(students, key=lambda s: s.registerNumber)
-    
-    # 1. Group by Subject
-    unique_subjects = set(s.subjectCode for s in sorted_students)
-    group_key = 'subject' if len(unique_subjects) > 1 else 'department'
-    
-    if group_key == 'subject':
-        # Primary Grouping by Subject
-        subject_groups = _group_by_subject(sorted_students)
-        
-        # 2. INTERNAL MIXING: Sort each Subject Group by Department (Round Robin)
-        # This solves the "95% same subject" issue by verifying neighbors are diff dept.
-        mixed_subject_groups = {}
-        for subj, subj_students in subject_groups.items():
-            mixed_subject_groups[subj] = _mix_by_department(subj_students)
-            
-        groups_dict = mixed_subject_groups
-    else:
-        # If input is already single subject, we just group by department directly
-        groups_dict = _group_by_department(sorted_students)
-        
-    # Create Queue using Active Pair Strategy
-    allocation_queue = _generate_pair_interleaved_queue(groups_dict, total_capacity, group_key)
-    
-    # Allocate to halls
+    # Condition: Single Subject & Sufficient Space
+    use_spacers = (len(unique_subjects) == 1) and (total_capacity >= total_students * 2)
+
+    # --- 3. Allocate Hall by Hall ---
     hall_seatings = []
     student_allocations = []
     
-    current_idx = 0
-    total_items = len(allocation_queue)
-    
     for hall in halls:
-        if current_idx >= total_items:
+        # Check if we have students left
+        remaining = sum(len(g) for g in available_groups.values())
+        if remaining == 0:
             break
-            
-        remaining_items = allocation_queue[current_idx:]
-        grid, consumed_count, valid_student_count = _fill_hall_snake(hall, remaining_items, group_key)
+
+        # Generate Queue for this hall
+        if use_spacers:
+            queue = _build_spacer_queue(available_groups, hall.capacity)
+        else:
+            queue = _build_mixing_queue(available_groups, hall.capacity)
+
+        # Fill Grid (Snake)
+        grid, valid_count = _fill_hall_snake(hall, queue)
         
-        current_idx += consumed_count
-        
+        # Create Result Objects
         hall_seating = HallSeating(
             hall=hall,
             grid=grid,
-            studentsCount=valid_student_count
+            studentsCount=valid_count
         )
         hall_seatings.append(hall_seating)
-        
+
+        # Generate Allocations (Seat Numbers)
         for r_idx, row in enumerate(grid):
             for c_idx, seat in enumerate(row):
-                # Vertical Snake Numbering Logic (Apply to ALL seats)
+                # Calculate human-readable seat number
+                # Vertical Snake: Col 0 (1..R), Col 1 (2R..R+1), etc.
                 rows_in_hall = hall.rows
                 if c_idx % 2 == 0:
-                    # Even column: Top -> Bottom (e.g. 1 to rows)
+                    # Down: (col * rows) + row + 1
                     num = (c_idx * rows_in_hall) + r_idx + 1
                 else:
-                    # Odd column: Bottom -> Top
+                    # Up: (col * rows) + (rows - row)
                     num = (c_idx * rows_in_hall) + (rows_in_hall - r_idx)
                 
-                # Assign seat number to Seat object
                 seat.seatNumber = str(num)
 
                 if seat.student:
@@ -97,204 +120,206 @@ def allocate_seats(students: List[Student], halls: List[Hall]) -> SeatingResult:
                         seatNumber=str(num)
                     )
                     student_allocations.append(allocation)
-    
+
+    # Final Result
     return SeatingResult(
         halls=hall_seatings,
         studentAllocation=student_allocations,
-        totalStudents=len(sorted_students),
+        totalStudents=total_students,
         hallsUsed=len(hall_seatings)
     )
 
-def _group_by_subject(students: List[Student]) -> Dict[str, List[Student]]:
-    groups = defaultdict(list)
-    for student in students:
-        groups[student.subjectCode].append(student)
-    return dict(groups)
 
-def _group_by_department(students: List[Student]) -> Dict[str, List[Student]]:
-    groups = defaultdict(list)
-    for student in students:
-        groups[student.department].append(student)
-    return dict(groups)
-
-def _mix_by_department(students: List[Student]) -> List[Student]:
-    """
-    Takes a list of students (same subject), groups them by department,
-    and round-robins them to ensure Department diversity.
-    Input: [CSE, CSE, IT, IT]
-    Output: [CSE, IT, CSE, IT]
-    """
-    dept_map = defaultdict(list)
-    for s in students:
-        dept_map[s.department].append(s)
-        
-    # Round robin mix
-    subgroups = list(dept_map.values())
-    mixed = []
-    
-    pointers = [0] * len(subgroups)
-    lengths = [len(g) for g in subgroups]
-    max_len = max(lengths) if lengths else 0
-    
-    for i in range(max_len):
-        for g_idx, group in enumerate(subgroups):
-            if pointers[g_idx] < lengths[g_idx]:
-                mixed.append(group[pointers[g_idx]])
-                pointers[g_idx] += 1
-                
-    return mixed
-
-def _generate_pair_interleaved_queue(
+def _build_spacer_queue(
     groups: Dict[str, List[Student]], 
-    total_capacity: int,
-    group_key: str
+    capacity: int
 ) -> List[Optional[Student]]:
     """
-    Active Pair mixing.
+    Spacer Mode:
+    - Flatten groups sequentially (sorted by name).
+    - Insert None after every student.
     """
-    queue: List[Optional[Student]] = []
+    queue = []
+    sorted_keys = sorted(groups.keys()) 
     
-    # Sort groups by size desc
-    sorted_groups = sorted(groups.items(), key=lambda x: len(x[1]), reverse=True)
+    current_key_idx = 0
     
-    pool = []
-    for k, s_list in sorted_groups:
-        pool.append({'key': k, 'students': list(s_list), 'idx': 0})
-        
-    active_a = pool.pop(0) if pool else None
-    active_b = pool.pop(0) if pool else None
-    
-    total_students = sum(len(g) for g in groups.values())
-    processed_count = 0
-    
-    while active_a or active_b:
-        # 1. Process Active A
-        if active_a:
-            if active_a['idx'] < len(active_a['students']):
-                student = active_a['students'][active_a['idx']]
-                _try_insert_spacer(queue, student, total_capacity, total_students, processed_count, group_key)
-                queue.append(student)
-                active_a['idx'] += 1
-                processed_count += 1
+    while len(queue) < capacity:
+        if current_key_idx >= len(sorted_keys):
+            break 
             
-            if active_a['idx'] >= len(active_a['students']):
-                active_a = pool.pop(0) if pool else None
+        key = sorted_keys[current_key_idx]
+        group_list = groups[key]
         
-        # 2. Process Active B
-        if active_b:
-            if active_b['idx'] < len(active_b['students']):
-                student = active_b['students'][active_b['idx']]
-                _try_insert_spacer(queue, student, total_capacity, total_students, processed_count, group_key)
-                queue.append(student)
-                active_b['idx'] += 1
-                processed_count += 1
+        if not group_list:
+            current_key_idx += 1
+            continue
             
-            if active_b['idx'] >= len(active_b['students']):
-                active_b = pool.pop(0) if pool else None
-                
+        student = group_list.pop(0)
+        queue.append(student)
+        
+        # Add Spacer
+        if len(queue) < capacity:
+            queue.append(None)
+            
+        if not group_list:
+            del groups[key]
+            # Key removed, but our idx points to current key string in sorted_keys list.
+            # Next iteration we should move to next key in list.
+            current_key_idx += 1
+            
     return queue
 
-def _try_insert_spacer(
-    queue: List[Optional[Student]], 
-    next_student: Student, 
-    total_capacity: int, 
-    total_students: int, 
-    processed_count: int,
-    group_key: str
-):
-    if not queue:
-        return
-    last_item = queue[-1]
-    if last_item is None:
-        return
+
+def _build_mixing_queue(
+    groups: Dict[str, List[Student]], 
+    capacity: int
+) -> List[Optional[Student]]:
+    """
+    Mixing Mode:
+    - Pick 2 groups based on defined priority (Alphabetical).
+    - Start with the LARGER of the two.
+    - Strictly alternate.
+    - If one depletes, replace with next available group (Alphabetical).
+    """
+    queue = []
     
-    # If Group Key is Subject, we primarily separate by Subject.
-    # BUT user requirement: If Same Subject, check Department!
+    # Helper to get keys sorted alphabetically
+    def get_sorted_keys():
+        return sorted([k for k, v in groups.items() if v])
+
+    # Initialize Active Pair
+    keys = get_sorted_keys()
+    key_a = keys[0] if len(keys) > 0 else None
+    key_b = keys[1] if len(keys) > 1 else None
     
-    last_sub = last_item.subjectCode
-    curr_sub = next_student.subjectCode
+    # Determine Starting Turn (Largest First)
+    turn = 'A'
+    if key_a and key_b:
+        len_a = len(groups[key_a])
+        len_b = len(groups[key_b])
+        if len_b > len_a:
+            turn = 'B'
     
-    last_dept = last_item.department
-    curr_dept = next_student.department
-    
-    conflict = False
-    
-    if group_key == 'subject':
-        # Primary Conflict: Same Subject
-        if last_sub == curr_sub:
-            # Secondary Check: Are Depts also same?
-            # User wants "nearby student should be other department".
-            # So if Subject Same AND Dept Same -> HARD CONFLICT.
-            if last_dept == curr_dept:
-                conflict = True
-            else:
-                # Same Subject, Diff Dept -> Allowed by user ("can be seated in same hall").
-                # So NO spacer needed here.
-                conflict = False
-    else:
-        # Single Subject case
-        if last_dept == curr_dept:
-            conflict = True
+    while len(queue) < capacity:
+        # 1. Identify Target Group
+        target_key = None
+        if turn == 'A':
+            target_key = key_a
+        else:
+            target_key = key_b
             
-    if conflict:
-        remaining_students = total_students - processed_count
-        current_len = len(queue)
-        if (current_len + remaining_students + 1) <= total_capacity:
-            queue.append(None)
+        # If target key is None or invalid, try to handle
+        if target_key is None or target_key not in groups:
+           # If one key is missing, check if we have the other
+           if key_a and key_a in groups: target_key = key_a
+           elif key_b and key_b in groups: target_key = key_b
+           else: break # All done
+        
+        # 2. Pop Student
+        student = None
+        if target_key and groups.get(target_key):
+            student = groups[target_key].pop(0)
+            
+            # Check depletion
+            if not groups[target_key]:
+                del groups[target_key]
+                # Replacement Logic
+                new_keys = get_sorted_keys()
+                # Find first key that is NOT the other active key
+                other_active = key_b if target_key == key_a else key_a
+                
+                replacement = None
+                for k in new_keys:
+                    if k != other_active:
+                        replacement = k
+                        break
+                
+                # Assign replacement
+                if target_key == key_a:
+                    key_a = replacement
+                else:
+                    key_b = replacement
+                    
+        # 3. Add to Queue
+        if student:
+            queue.append(student)
+            
+            # 4. Swap Turn
+            turn = 'B' if turn == 'A' else 'A'
+        else:
+            if not any(groups.values()):
+                break
+            turn = 'B' if turn == 'A' else 'A'
+            
+    return queue
 
 def _fill_hall_snake(
-    hall: Hall,
-    items: List[Optional[Student]],
-    group_key: str
-) -> Tuple[List[List[Seat]], int, int]:
+    hall: Hall, 
+    items: List[Optional[Student]]
+) -> Tuple[List[List[Seat]], int]:
+    """
+    Standard Vertical Snake Fill
+    """
     rows = hall.rows
     cols = hall.columns
     grid = [[Seat(row=r, col=c) for c in range(cols)] for r in range(rows)]
     
     item_idx = 0
-    total_items = len(items)
     valid_count = 0
-    seats_processed = 0
+    seats_filled = 0
     
     for c in range(cols):
+        # Determine Row Iterator based on Snake Direction
         if c % 2 == 0:
+            # Down
             row_iter = range(rows)
         else:
+            # Up
             row_iter = range(rows - 1, -1, -1)
             
         for r in row_iter:
-            if seats_processed >= hall.capacity:
-                return grid, item_idx, valid_count
-
-            seats_processed += 1
-            
-            if item_idx < total_items:
+            if seats_filled >= hall.capacity:
+                return grid, valid_count
+                
+            if item_idx < len(items):
                 item = items[item_idx]
+                item_idx += 1
+                
+                seats_filled += 1
+                
                 if item:
                     seat = grid[r][c]
                     seat.student = item
-                    seat.subject = item.subjectCode if group_key == 'subject' else None
-                    seat.department = item.department if group_key == 'department' else None
+                    # Store Allocation Metadata
+                    seat.subject = item.subjectCode
+                    seat.department = item.department
                     valid_count += 1
-                item_idx += 1
             else:
-                return grid, item_idx, valid_count
+                return grid, valid_count
+                
+    return grid, valid_count
 
-    return grid, item_idx, valid_count
 
 def validate_no_adjacent_conflict(grid: List[List[Seat]], group_key: str) -> bool:
+    """Helper: Validate conflicts (unused by core logic but good for testing)"""
     rows = len(grid)
     cols = len(grid[0]) if rows > 0 else 0
-    for row in range(rows):
-        for col in range(cols):
-            if not grid[row][col].student: continue
-            current_key = (grid[row][col].subject if group_key == 'subject' else grid[row][col].department)
-            adjacents = [(row - 1, col), (row + 1, col), (row, col - 1), (row, col + 1)]
-            for adj_row, adj_col in adjacents:
-                if 0 <= adj_row < rows and 0 <= adj_col < cols:
-                    adj_seat = grid[adj_row][adj_col]
-                    if adj_seat.student:
-                        adj_key = (adj_seat.subject if group_key == 'subject' else adj_seat.department)
-                        if current_key == adj_key:
+    for r in range(rows):
+        for c in range(cols):
+            s1 = grid[r][c]
+            if not s1.student: continue
+            
+            # Key to check
+            val1 = s1.subject if group_key == 'subject' else s1.department
+            
+            # Neighbors
+            for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < rows and 0 <= nc < cols:
+                    s2 = grid[nr][nc]
+                    if s2.student:
+                        val2 = s2.subject if group_key == 'subject' else s2.department
+                        if val1 == val2:
                             return False
     return True
