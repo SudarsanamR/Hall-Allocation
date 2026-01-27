@@ -91,10 +91,10 @@ class Database:
             {'name': 'AH2', 'block': 'Mech Block', 'rows': 5, 'columns': 5},
             {'name': 'AH3', 'block': 'Mech Block', 'rows': 5, 'columns': 5},
             {'name': 'A4', 'block': 'Auto Block', 'rows': 5, 'columns': 5},
-            {'name': 'AUD1', 'block': 'Auditorium', 'rows': 5, 'columns': 5},
-            {'name': 'AUD2', 'block': 'Auditorium', 'rows': 5, 'columns': 5},
-            {'name': 'AUD3', 'block': 'Auditorium', 'rows': 5, 'columns': 5},
-            {'name': 'AUD4', 'block': 'Auditorium', 'rows': 5, 'columns': 5},
+            {'name': 'AUD1', 'block': 'Auditorium', 'rows': 9, 'columns': 3, 'capacity': 25},
+            {'name': 'AUD2', 'block': 'Auditorium', 'rows': 9, 'columns': 3, 'capacity': 25},
+            {'name': 'AUD3', 'block': 'Auditorium', 'rows': 9, 'columns': 3, 'capacity': 25},
+            {'name': 'AUD4', 'block': 'Auditorium', 'rows': 9, 'columns': 3, 'capacity': 25},
         ]
         
         self.halls = []
@@ -105,7 +105,7 @@ class Database:
                 block=h['block'],
                 rows=h['rows'],
                 columns=h['columns'],
-                capacity=h['rows'] * h['columns']
+                capacity=h.get('capacity', h['rows'] * h['columns'])
             )) 
     
     def reset_halls(self):

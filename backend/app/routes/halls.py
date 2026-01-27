@@ -39,10 +39,10 @@ DEFAULT_HALLS = [
     # Auto Block
     {'name': 'A4', 'block': 'Auto Block', 'rows': 5, 'columns': 5},
     # Auditorium
-    {'name': 'AUD1', 'block': 'Auditorium', 'rows': 5, 'columns': 5},
-    {'name': 'AUD2', 'block': 'Auditorium', 'rows': 5, 'columns': 5},
-    {'name': 'AUD3', 'block': 'Auditorium', 'rows': 5, 'columns': 5},
-    {'name': 'AUD4', 'block': 'Auditorium', 'rows': 5, 'columns': 5},
+    {'name': 'AUD1', 'block': 'Auditorium', 'rows': 9, 'columns': 3, 'capacity': 25},
+    {'name': 'AUD2', 'block': 'Auditorium', 'rows': 9, 'columns': 3, 'capacity': 25},
+    {'name': 'AUD3', 'block': 'Auditorium', 'rows': 9, 'columns': 3, 'capacity': 25},
+    {'name': 'AUD4', 'block': 'Auditorium', 'rows': 9, 'columns': 3, 'capacity': 25},
 ]
 
 @bp.route('/halls', methods=['GET'])
@@ -154,4 +154,20 @@ def initialize_default_halls():
         } for h in db.halls
     ]
     
+    
     return jsonify(halls), 200
+
+@bp.route('/halls/reorder_blocks', methods=['POST'])
+def reorder_blocks():
+    """Reorder halls based on block priority"""
+    data = request.json
+    if not data or not isinstance(data, list):
+         return jsonify({'error': 'Invalid data format, expected list of block names'}), 400
+         
+    block_order = {block: index for index, block in enumerate(data)}
+    
+    # Sort the global db.halls list
+    # Use a high default index for unknown blocks so they go to the end
+    db.halls.sort(key=lambda x: block_order.get(x.block, 9999))
+    
+    return jsonify({'message': 'Blocks reordered successfully'}), 200

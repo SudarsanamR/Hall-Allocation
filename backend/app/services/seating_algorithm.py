@@ -254,6 +254,7 @@ def _fill_hall_snake(
     item_idx = 0
     total_items = len(items)
     valid_count = 0
+    seats_processed = 0
     
     for c in range(cols):
         if c % 2 == 0:
@@ -262,6 +263,11 @@ def _fill_hall_snake(
             row_iter = range(rows - 1, -1, -1)
             
         for r in row_iter:
+            if seats_processed >= hall.capacity:
+                return grid, item_idx, valid_count
+
+            seats_processed += 1
+            
             if item_idx < total_items:
                 item = items[item_idx]
                 if item:
