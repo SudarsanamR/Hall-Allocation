@@ -9,6 +9,8 @@ The user interface for the Seat Allotment System, built with **React**, **TypeSc
 -   **Styling**:
     -   **Tailwind CSS**: Utility-first styling for layout and responsiveness.
     -   **Lucide React**: Consistent and clean icon set.
+-   **Interactivity**:
+    -   **@dnd-kit**: Powered the Drag-and-Drop block reordering interface.
 -   **API Integration**: Custom `api.ts` utility using `axios` to communicate with the Flask backend.
 
 ## 📱 Page Overview
@@ -23,6 +25,7 @@ The user interface for the Seat Allotment System, built with **React**, **TypeSc
 -   **Parsing Feedback**: Shows status of the file upload and parsing process (Success/Error counts).
 
 ### 3. Hall Management (`/halls`)
+-   **Block Reordering**: Drag blocks (e.g., Auditorium, Civil Block) to prioritize order of allocation.
 -   **Visual Grid Builder**: Validates hall configuration (Rows x Columns).
 -   **Capacity Calculation**: Automatically calculates total capacity based on dimensions.
 -   **Hall List**: View, edit, or delete existing hall configurations.
@@ -41,7 +44,7 @@ frontend/
 │   ├── components/
 │   │   ├── layout/       # Shared UI (Sidebar, TopBar)
 │   │   ├── seating/      # Grid visualization components
-│   │   └── halls/        # Hall form and list components
+│   │   └── halls/        # Hall form, list, and DnD components
 │   ├── pages/            # Main Route Views
 │   │   ├── Dashboard.tsx
 │   │   ├── Upload.tsx
@@ -70,5 +73,6 @@ frontend/
 ## 🎨 Key Features
 
 -   **Responsive Design**: Works on Desktop and Tablets.
+-   **Drag & Drop**: Intuitive sorting for Hall Blocks to set allocation priority.
 -   **Real-time Validation**: Form inputs for Hall dimensions and capacities are validated instantly.
 -   **Grid Visualization**: Dynamic rendering of seating grids based on matrix data from the backend.

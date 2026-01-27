@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "exam-hall-allotment",
-  "version": "0.0.2",
+  "productName": "GCEE Exam Hall Allotment",
+  "version": "1.0.1",
   "identifier": "com.gcee.hallallocation",
   "build": {
     "frontendDist": "../dist",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Exam Hall Allotment",
+        "title": "GCEE Exam Hall Allotment",
         "width": 800,
         "height": 600,
         "resizable": true,

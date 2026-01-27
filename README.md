@@ -1,5 +1,7 @@
 # University Exam Seat Allotment System
 
+![Version](https://img.shields.io/badge/version-1.0.1-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+
 A comprehensive web application designed to automate and optimize the process of allocating exam seats for university students. This system handles student data constraints, hall capacities, and specific seating patterns (like the "Vertical Snake") to ensure fair and organized exam conduct.
 
 ## 🚀 Features
@@ -10,22 +12,24 @@ A comprehensive web application designed to automate and optimize the process of
   - Supports "Spacer" logic to prevent side-by-side seating of same-subject students where possible.
 
 - **Hall Management**:
-  - dynamic configuration of exam halls (Block, Hall Number, Rows, Columns).
-  - Visualization of hall status (Total capacity, allocated seats).
+  - **Dynamic Configuration**: Create halls with custom dimensions (Rows x Columns).
+  - **Block Prioritization**: **Drag-and-Drop** interface to reorder hall blocks (e.g., allocate "Auditorium" first, then "Civil Block").
+  - **Custom Layouts**: specific support for 9x3 Auditorium layouts with capped capacity (e.g., 25 seats).
 
 - **Data Processing**:
-  - **PDF Parsing**: robust extraction of student registration data and exam timetables from university PDF documents.
+  - **PDF Parsing**: Robust extraction of student registration data and exam timetables from university PDF documents.
   - **Excel/CSV Support**: Export and import capabilities for reporting.
 
 - **Interactive Dashboard**:
   - Real-time statistics on allocated vs. pending seats.
-  - Visual representation of seating grids.
+  - Visual representation of seating grids with tooltips showing student details.
 
 ## 🛠️ Technology Stack
 
 ### Frontend
 - **Framework**: [React](https://react.dev/) (v18+) with [Vite](https://vitejs.dev/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/) for modern, responsive design.
+- **Interactivity**: [`@dnd-kit`](https://dndkit.com/) for robust drag-and-drop functionality.
 - **Icons**: [Lucide React](https://lucide.dev/).
 - **Navigation**: React Router DOM.
 - **HTTP Client**: Axios.
@@ -44,15 +48,15 @@ A comprehensive web application designed to automate and optimize the process of
 antigravity 3.0/
 ├── backend/               # Python/Flask Backend
 │   ├── app/
-│   │   ├── routes/        # API Endpoints (seating, upload, etc.)
+│   │   ├── routes/        # API Endpoints (seating, upload, halls)
 │   │   ├── services/      # Business logic (allocation, parsing)
-│   │   └── models/        # Database models (if applicable)
+│   │   └── models/        # Database models
 │   ├── requirements.txt   # Python dependencies
 │   └── run.py             # Entry point
 │
 ├── frontend/              # React Frontend
 │   ├── src/
-│   │   ├── components/    # Reusable UI components
+│   │   ├── components/    # Reusable UI (ResultGrid, HallManager, etc.)
 │   │   ├── pages/         # Application pages
 │   │   └── utils/         # Helper functions
 │   ├── package.json       # Node.js dependencies
@@ -107,7 +111,7 @@ antigravity 3.0/
     ```bash
     npm run dev
     ```
-    Access the application at the URL provided by Vite (usually `http://localhost:5173`).
+    Access the application at the URL provided by Vite (Usually `http://localhost:5173`).
 
 ## 🤝 Contribution
 Contributions are welcome! Please feel free to submit a Pull Request.

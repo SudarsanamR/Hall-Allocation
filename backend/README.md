@@ -30,7 +30,11 @@ The system uses a custom **"Vertical Snake"** allocation strategy designed to mi
     -   If the algorithm detects that the next student in the queue causes a hard conflict (Same Subject AND Same Department) with the previous seated student, it inserts a **Spacer** (empty seat).
     -   Spacers are only used if the hall is not fully packed.
 
-### 2. PDF Parsing Logic
+### 2. Hall Configuration & Priority
+-   **Block Priority**: Halls are grouped by "Block" (e.g., Main Block, Mechanical Block). The allocation algorithm fills blocks in a specific order. This order can be customized via the API.
+-   **Auditorium Layouts**: Specific logic exists for Auditoriums, defined as 9x3 grids. Despite having 27 physical slots, they are explicitly capped at a **capacity of 25 students** to meet exam standards.
+
+### 3. PDF Parsing Logic
 The `pdf_parser.py` service extracts structured data from university exam timetables (PDFs).
 
 -   **Context Extraction**: Scans the PDF line-by-line using Regex to find "Exam Date", "Session", and "Subject Code/Name". These values persist as "context" until they change.
@@ -49,7 +53,7 @@ backend/
 │   ├── routes/
 │   │   ├── seating.py       # API for generating/retrieving allotments
 │   │   ├── upload.py        # API for PDF/Excel uploads
-│   │   └── halls.py         # API for Hall CRUD operations
+│   │   └── halls.py         # API for Hall CRUD and Block Reordering
 │   ├── services/
 │   │   ├── seating_algorithm.py  # (Logic described above)
 │   │   ├── pdf_parser.py         # (Logic described above)
@@ -85,5 +89,6 @@ backend/
 -   `POST /upload`: Upload PDF/Excel files.
 -   `GET /halls`: List all configured halls.
 -   `POST /halls`: Create a new hall.
+-   `POST /halls/reorder_blocks`: Reorder the priority of hall blocks (expects list of block names).
 -   `POST /generate`: Trigger the allocation algorithm.
 -   `GET /allocations`: Retrieve the latest allocation results.
