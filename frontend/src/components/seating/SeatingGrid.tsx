@@ -6,14 +6,22 @@ interface SeatingGridProps {
     hallSeating: HallSeating;
     colorMap: Map<string, string>;
     highlightStudentId?: string;
+    selectedDepts?: string[];
+    selectedSubjects?: string[];
 }
 
-const SeatingGrid = ({ hallSeating, colorMap, highlightStudentId }: SeatingGridProps) => {
+const SeatingGrid = ({
+    hallSeating,
+    colorMap,
+    highlightStudentId,
+    selectedDepts,
+    selectedSubjects
+}: SeatingGridProps) => {
     const { hall, grid, studentsCount } = hallSeating;
 
     return (
         <div className="card overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-lg">
-            {/* Hall Header */}
+            {/* ... Header ... */}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 pb-4 border-b border-gray-100 dark:border-gray-800 gap-4">
                 <div>
                     <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -26,7 +34,6 @@ const SeatingGrid = ({ hallSeating, colorMap, highlightStudentId }: SeatingGridP
                         Occupancy: <span className="font-medium text-gray-900 dark:text-white">{studentsCount}</span> / {hall.capacity}
                     </p>
                 </div>
-
             </div>
 
             {/* Screen Indicator */}
@@ -52,13 +59,13 @@ const SeatingGrid = ({ hallSeating, colorMap, highlightStudentId }: SeatingGridP
                                 colorMap={colorMap}
                                 isHighlighted={highlightStudentId && seat.student ? seat.student.registerNumber === highlightStudentId : false}
                                 isMasked={!!highlightStudentId && !!seat.student && seat.student.registerNumber !== highlightStudentId}
+                                selectedDepts={selectedDepts}
+                                selectedSubjects={selectedSubjects}
                             />
                         ))
                     )}
                 </div>
             </div>
-
-
         </div>
     );
 };

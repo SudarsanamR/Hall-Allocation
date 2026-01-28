@@ -103,7 +103,7 @@ const HallManagement = () => {
         <div className="space-y-6 animate-fade-in">
             <div className="flex items-center gap-4 mb-6">
                 <button
-                    onClick={() => navigate('/')}
+                    onClick={() => navigate('/admin')}
                     className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
                     title="Back to Dashboard"
                 >
