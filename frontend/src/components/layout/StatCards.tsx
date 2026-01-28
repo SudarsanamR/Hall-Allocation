@@ -2,15 +2,45 @@ import type { Stats } from '../../types';
 
 interface StatCardsProps {
     stats: Stats;
+    selectedDepts: string[];
+    selectedSubjects: string[];
+    onToggleDept: (dept: string) => void;
+    onToggleSubject: (subj: string) => void;
+    onSelectAllSubjects?: () => void;
+    colorMap: Map<string, string>;
 }
 
-const StatCards = ({ stats }: StatCardsProps) => {
+const StatCards = ({
+    stats,
+    selectedDepts,
+    selectedSubjects,
+    onToggleDept,
+    onToggleSubject,
+    onSelectAllSubjects,
+    colorMap
+}: StatCardsProps) => {
+
+    // Helper to get color style
+    const getBadgeStyle = (key: string, isSelected: boolean, defaultColor: string) => {
+        if (!isSelected) {
+            return "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors";
+        }
+        // Use mapped color if available, else default gradient/style
+        // Determine if colorMap value is a Tailwind class string
+        const mappedClass = colorMap.get(key);
+        if (mappedClass) {
+            return `${mappedClass} cursor-pointer shadow-sm ring-1 ring-black/5 dark:ring-white/10`;
+        }
+        return `bg-gradient-to-r ${defaultColor} text-white cursor-pointer shadow-md`;
+    };
+
     const cards = [
         {
             title: 'Total Students',
             value: stats.totalStudents,
             gradient: 'from-blue-500 to-blue-600',
             details: stats.departmentBreakdown,
+            isDept: true,
         },
         {
             title: 'Halls Used',
@@ -22,6 +52,7 @@ const StatCards = ({ stats }: StatCardsProps) => {
             value: Object.keys(stats.subjectBreakdown || {}).length,
             gradient: 'from-emerald-500 to-emerald-600',
             details: stats.subjectBreakdown,
+            isSubject: true,
         },
     ];
 
@@ -30,27 +61,70 @@ const StatCards = ({ stats }: StatCardsProps) => {
             {cards.map((card, index) => (
                 <div
                     key={card.title}
-                    className="card animate-fade-in p-6"
+                    className="card animate-fade-in p-6 relative overflow-hidden group"
                     style={{ animationDelay: `${index * 100}ms` }}
                 >
+                    {/* Background Glow */}
+                    <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${card.gradient} opacity-5 group-hover:opacity-10 rounded-bl-full transition-opacity duration-500 pointer-events-none`} />
+
                     <div>
                         <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-2">
                             {card.title}
                         </p>
-                        <p className="text-4xl font-bold">
+                        <p className="text-4xl font-bold mb-4">
                             <span className={`bg-gradient-to-r ${card.gradient} bg-clip-text text-transparent`}>
                                 {card.value.toLocaleString()}
                             </span>
                         </p>
                     </div>
-                    {/* Department Breakdown */}
+
+                    {/* Department / Subject Badges (Interactive) */}
                     {card.details && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                            {Object.entries(card.details).map(([dept, count]) => (
-                                <span key={dept} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
-                                    {dept}: {count}
-                                </span>
-                            ))}
+                        <div className="flex flex-wrap gap-2">
+                            {/* Add "All" Button for Subjects if handler provided */}
+                            {card.isSubject && onSelectAllSubjects && (
+                                <button
+                                    onClick={onSelectAllSubjects}
+                                    className={`
+                                        inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold uppercase tracking-wide
+                                        border transition-all duration-200 select-none
+                                        ${getBadgeStyle('All', selectedSubjects.length === 0, card.gradient)}
+                                    `}
+                                >
+                                    Select All
+                                </button>
+                            )}
+
+                            {Object.entries(card.details).map(([key, count]) => {
+                                // Assume key is Dept Name or Subject Code
+                                const isSelected = card.isDept
+                                    ? selectedDepts.includes(key)
+                                    : card.isSubject
+                                        ? selectedSubjects.includes(key)
+                                        : false;
+
+                                const toggle = () => {
+                                    if (card.isDept) onToggleDept(key);
+                                    if (card.isSubject) onToggleSubject(key);
+                                };
+
+                                return (
+                                    <button
+                                        key={key}
+                                        onClick={toggle}
+                                        className={`
+                                            inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold uppercase tracking-wide
+                                            border transition-all duration-200 select-none
+                                            ${getBadgeStyle(key, isSelected, card.gradient)}
+                                        `}
+                                    >
+                                        {key}
+                                        <span className="ml-1.5 opacity-80">
+                                            {count}
+                                        </span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     )}
                 </div>

@@ -131,17 +131,33 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleDownloadHall = () => {
-        if (selectedSession) downloadHallWiseExcel(selectedSession);
-    };
-
-    const handleDownloadStudent = () => {
-        if (selectedSession) downloadStudentWiseExcel(selectedSession);
-    };
+    // --- Filter State ---
+    const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
+    const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
 
     // --- Helpers ---
     const currentResult: SeatingResult | null =
         response && selectedSession ? response.results[selectedSession] : null;
+
+    // Initialize filters when result changes
+    useEffect(() => {
+        if (currentResult) {
+            const depts = new Set<string>();
+            const subjs = new Set<string>();
+            currentResult.studentAllocation.forEach(s => {
+                if (s.department) depts.add(s.department);
+                // Extract subject code/name to match StatCards logic
+                // Assuming s.subject format: "CODE: Name" or just "Name"
+                // StatCards uses: Object.keys(stats.subjectBreakdown)
+                // subjectBreakdown uses s.subject directly.
+                if (s.subject) subjs.add(s.subject);
+            });
+            setSelectedDepts(Array.from(depts));
+            setSelectedSubjects(Array.from(subjs));
+        }
+    }, [currentResult]);
+
+
 
     // Calculate department breakdown
     const departmentBreakdown = currentResult?.studentAllocation.reduce((acc, curr) => {
@@ -151,9 +167,39 @@ const AdminDashboard = () => {
 
     // Calculate subject breakdown
     const subjectBreakdown = currentResult?.studentAllocation.reduce((acc, curr) => {
-        acc[curr.subject] = (acc[curr.subject] || 0) + 1;
+        if (curr.subject) {
+            acc[curr.subject] = (acc[curr.subject] || 0) + 1;
+        }
         return acc;
     }, {} as Record<string, number>);
+
+    // --- Filter Handlers ---
+    const toggleDept = (dept: string) => {
+        setSelectedDepts(prev =>
+            prev.includes(dept) ? prev.filter(d => d !== dept) : [...prev, dept]
+        );
+    };
+
+    const toggleSubject = (subj: string) => {
+        setSelectedSubjects(prev =>
+            prev.includes(subj) ? prev.filter(s => s !== subj) : [...prev, subj]
+        );
+    };
+
+    const selectAllSubjects = () => {
+        // Explicitly select ALL subjects
+        if (subjectBreakdown) {
+            setSelectedSubjects(Object.keys(subjectBreakdown));
+        }
+    };
+
+    const handleDownloadHall = () => {
+        if (selectedSession) downloadHallWiseExcel(selectedSession);
+    };
+
+    const handleDownloadStudent = () => {
+        if (selectedSession) downloadStudentWiseExcel(selectedSession);
+    };
 
     const stats: Stats = {
         totalStudents: currentResult?.totalStudents || 0,
@@ -165,19 +211,30 @@ const AdminDashboard = () => {
 
     // Color map logic
     const colorMap = new Map<string, string>();
-    const colors = [
-        'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800',
-        'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800',
+
+    // Fixed Department Colors
+    const DEPARTMENT_COLORS: Record<string, string> = {
+        'CSE': 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800',
+        'IT': 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800',
+        'ECE': 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800',
+        'EEE': 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800',
+        'MECH': 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800',
+        'CIVIL': 'bg-lime-100 text-lime-800 border-lime-200 dark:bg-lime-900/30 dark:text-lime-300 dark:border-lime-800',
+        'AI&DS': 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200 dark:bg-fuchsia-900/30 dark:text-fuchsia-300 dark:border-fuchsia-800',
+        'CSBS': 'bg-pink-100 text-pink-800 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-800',
+        'BME': 'bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-800',
+        'MBA': 'bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800',
+        'MCA': 'bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800',
+        'AUTO': 'bg-rose-200 text-rose-900 border-rose-300 dark:bg-rose-800/40 dark:text-rose-200 dark:border-rose-700',
+        'AUTOMOBILE': 'bg-rose-200 text-rose-900 border-rose-300 dark:bg-rose-800/40 dark:text-rose-200 dark:border-rose-700'
+    };
+
+    const fallbackColors = [
+        'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-900/30 dark:text-slate-300 dark:border-slate-800',
         'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800',
-        'bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800',
-        'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800',
-        'bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800',
-        'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800',
-        'bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-800',
-        'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800',
-        'bg-lime-100 text-lime-800 border-lime-200 dark:bg-lime-900/30 dark:text-lime-300 dark:border-lime-800',
-        'bg-pink-100 text-pink-800 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-800',
-        'bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800',
+        'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800',
+        'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800',
+        'bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800'
     ];
 
     if (currentResult) {
@@ -193,9 +250,17 @@ const AdminDashboard = () => {
             });
         });
 
+        // Use fixed map first, then fallback
         const sortedKeys = Array.from(uniqueKeys).sort();
-        sortedKeys.forEach((key, index) => {
-            colorMap.set(key, colors[index % colors.length]);
+        let fallbackIndex = 0;
+
+        sortedKeys.forEach((key) => {
+            if (DEPARTMENT_COLORS[key]) {
+                colorMap.set(key, DEPARTMENT_COLORS[key]);
+            } else {
+                colorMap.set(key, fallbackColors[fallbackIndex % fallbackColors.length]);
+                fallbackIndex++;
+            }
         });
     }
 
@@ -381,17 +446,38 @@ const AdminDashboard = () => {
 
                             {/* Stats */}
                             <div className="mt-8 mb-8">
-                                <StatCards stats={stats} />
+                                <StatCards
+                                    stats={stats}
+                                    selectedDepts={selectedDepts}
+                                    selectedSubjects={selectedSubjects}
+                                    onToggleDept={toggleDept}
+                                    onToggleSubject={toggleSubject}
+                                    onSelectAllSubjects={selectAllSubjects}
+                                    colorMap={colorMap}
+                                />
                             </div>
 
                             {/* Seating Grid */}
                             {currentResult && (
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-                                    {currentResult.halls.map((hallSeating) => (
+                                    {/* Filter Halls based on selection */}
+                                    {currentResult.halls.filter(hall => {
+                                        // Show hall if it has ANY student matching the filter
+                                        return hall.grid.some(row =>
+                                            row.some(seat =>
+                                                seat.student &&
+                                                selectedDepts.includes(seat.student.department) &&
+                                                // Use seat.subject (full string) to match selectedSubjects keys
+                                                seat.subject && selectedSubjects.includes(seat.subject)
+                                            )
+                                        );
+                                    }).map((hallSeating) => (
                                         <SeatingGrid
                                             key={hallSeating.hall.id}
                                             hallSeating={hallSeating}
                                             colorMap={colorMap}
+                                            selectedDepts={selectedDepts}
+                                            selectedSubjects={selectedSubjects}
                                         />
                                     ))}
                                 </div>

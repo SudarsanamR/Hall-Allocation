@@ -25,6 +25,7 @@ DEFAULT_HALLS = [
     # EEE Block
     {'name': 'EEE1', 'block': 'EEE Block', 'rows': 5, 'columns': 5},
     {'name': 'EEE2', 'block': 'EEE Block', 'rows': 5, 'columns': 5},
+    {'name': 'EEE3', 'block': 'EEE Block', 'rows': 5, 'columns': 5},
     # ECE Block
     {'name': 'CT10', 'block': 'ECE Block', 'rows': 5, 'columns': 5},
     {'name': 'CT11', 'block': 'ECE Block', 'rows': 5, 'columns': 5},

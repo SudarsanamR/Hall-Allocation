@@ -81,6 +81,7 @@ class Database:
             {'name': 'T6B', 'block': 'Civil Block', 'rows': 5, 'columns': 5},
             {'name': 'EEE1', 'block': 'EEE Block', 'rows': 5, 'columns': 5},
             {'name': 'EEE2', 'block': 'EEE Block', 'rows': 5, 'columns': 5},
+            {'name': 'EEE3', 'block': 'EEE Block', 'rows': 5, 'columns': 5},
             {'name': 'CT10', 'block': 'ECE Block', 'rows': 5, 'columns': 5},
             {'name': 'CT11', 'block': 'ECE Block', 'rows': 5, 'columns': 5},
             {'name': 'CT12', 'block': 'ECE Block', 'rows': 5, 'columns': 5},
