@@ -71,17 +71,22 @@ def allocate_seats(students: List[Student], halls: List[Hall]) -> SeatingResult:
     hall_seatings = []
     student_allocations = []
     
-    for hall in halls:
+    total_halls = len(halls)
+    for i, hall in enumerate(halls):
         # Check if we have students left
         remaining = sum(len(g) for g in available_groups.values())
         if remaining == 0:
             break
 
+        # Calculate Future Capacity (seats in subsequent halls)
+        # This allows us to push students to next halls if we need spacers here.
+        future_capacity = sum(h.capacity for h in halls[i+1:])
+
         # Generate Queue for this hall
         if use_spacers:
             queue = _build_spacer_queue(available_groups, hall.capacity)
         else:
-            queue = _build_mixing_queue(available_groups, hall.capacity)
+            queue = _build_mixing_queue(available_groups, hall, future_capacity)
 
         # Fill Grid (Snake)
         grid, valid_count = _fill_hall_snake(hall, queue)
@@ -173,7 +178,8 @@ def _build_spacer_queue(
 
 def _build_mixing_queue(
     groups: Dict[str, List[Student]], 
-    capacity: int
+    hall: Hall,
+    future_capacity: int = 0
 ) -> List[Optional[Student]]:
     """
     Mixing Mode:
@@ -181,8 +187,12 @@ def _build_mixing_queue(
     - Start with the LARGER of the two.
     - Strictly alternate.
     - If one depletes, replace with next available group (Alphabetical).
+    - TAIL LOGIC: If only 1 group remains, try to space intelligently using Global Capacity.
     """
     queue = []
+    capacity = hall.capacity
+    rows = hall.rows
+    cols = hall.columns
     
     # Helper to get keys sorted alphabetically
     def get_sorted_keys():
@@ -201,6 +211,56 @@ def _build_mixing_queue(
         if len_b > len_a:
             turn = 'B'
     
+    # Helper: Get coords for an index
+    def get_coords(idx):
+        if idx < 0: return None
+        # Simplified Snake Logic
+        c = idx // rows
+        if c >= cols: return None
+        r_step = idx % rows
+        if c % 2 == 0: # Down
+            r = r_step
+        else: # Up
+            r = rows - 1 - r_step
+        return (r, c)
+        
+    # Helper: Check potential conflict
+    def check_conflict(idx, subject_code, dept_code):
+        r, c = get_coords(idx)
+        # Check Neighbors in Queue
+        
+        # Optimization: We check "Predecessors"
+        # 1. Previous in Sequence (idx-1). (Vertical neighbor)
+        # 2. Horizontal Neighbor (Same row, prev col).
+        
+        # Vertical Neighbor: Always idx-1.
+        prev_idx = idx - 1
+        if prev_idx >= 0 and queue[prev_idx]:
+             s = queue[prev_idx]
+             if s.subjectCode == subject_code or s.department == dept_code:
+                 # Check if they are physically adjacent
+                 pr, pc = get_coords(prev_idx)
+                 if abs(pr - r) + abs(pc - c) == 1:
+                     return True
+                     
+        # Horizontal Neighbor (Previous Col)
+        # (r, c-1)
+        if c > 0:
+            # Need to find index of (r, c-1)
+            # Col c-1. 
+            target_c = c - 1
+            if target_c % 2 == 0:
+                target_idx = (target_c * rows) + r
+            else:
+                target_idx = (target_c * rows) + (rows - 1 - r)
+            
+            if 0 <= target_idx < len(queue):
+                s = queue[target_idx]
+                if s and (s.subjectCode == subject_code or s.department == dept_code):
+                    return True
+                    
+        return False
+
     while len(queue) < capacity:
         # 1. Identify Target Group
         target_key = None
@@ -209,37 +269,55 @@ def _build_mixing_queue(
         else:
             target_key = key_b
             
-        # If target key is None or invalid, try to handle
         if target_key is None or target_key not in groups:
-           # If one key is missing, check if we have the other
            if key_a and key_a in groups: target_key = key_a
            elif key_b and key_b in groups: target_key = key_b
-           else: break # All done
+           else: break 
         
         # 2. Pop Student
         student = None
         if target_key and groups.get(target_key):
+            # Peek first 
+            student_candidate = groups[target_key][0]
+            
+            # --- SMART TAIL SPACING CHECK ---
+            # If this is the LAST group, try to insert spacer if conflict detected
+            active_keys = [k for k in groups if groups[k]]
+            if len(active_keys) <= 1:
+                # Check for conflict at current position
+                current_idx = len(queue)
+                if check_conflict(current_idx, student_candidate.subjectCode, student_candidate.department):
+                    # CONFLICT DETECTED!
+                    
+                    # GLOBAL BALANCING CHECK:
+                    # Can we afford to use a seat here for a spacer?
+                    # Yes, IF (Remaining Local Space + Future Space) > Remaining Students
+                    
+                    local_space = capacity - len(queue)
+                    remaining_demand = sum(len(g) for g in groups.values())
+                    total_available_space = local_space + future_capacity
+                    
+                    if total_available_space > remaining_demand: 
+                        # We have wiggle room. Insert spacer.
+                        queue.append(None)
+                        # Loop again to try placing student at new position
+                        continue 
+            # -------------------------------
+            
             student = groups[target_key].pop(0)
             
             # Check depletion
             if not groups[target_key]:
                 del groups[target_key]
-                # Replacement Logic
                 new_keys = get_sorted_keys()
-                # Find first key that is NOT the other active key
                 other_active = key_b if target_key == key_a else key_a
-                
                 replacement = None
                 for k in new_keys:
                     if k != other_active:
                         replacement = k
                         break
-                
-                # Assign replacement
-                if target_key == key_a:
-                    key_a = replacement
-                else:
-                    key_b = replacement
+                if target_key == key_a: key_a = replacement
+                else: key_b = replacement
                     
         # 3. Add to Queue
         if student:
