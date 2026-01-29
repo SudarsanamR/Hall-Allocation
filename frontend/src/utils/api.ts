@@ -54,8 +54,13 @@ export const initializeDefaultHalls = async (): Promise<Hall[]> => {
 };
 
 // Seating Generation
-export const generateSeating = async (): Promise<GenerateResponse> => {
+export const generateSeating = async (): Promise<{ success: boolean, sessions: string[] }> => {
     const response = await api.post('/generate');
+    return response.data;
+};
+
+export const getSessionSeating = async (session: string): Promise<SeatingResult> => {
+    const response = await api.get(`/seating/${encodeURIComponent(session)}`);
     return response.data;
 };
 

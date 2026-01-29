@@ -400,4 +400,18 @@ def validate_no_adjacent_conflict(grid: List[List[Seat]], group_key: str) -> boo
                         val2 = s2.subject if group_key == 'subject' else s2.department
                         if val1 == val2:
                             return False
+                            return False
     return True
+
+def get_snake_seat_number(row: int, col: int, total_rows: int) -> int:
+    """
+    Calculate seat number based on Vertical Snake pattern.
+    Col 0 (Down): 1, 2, 3...
+    Col 1 (Up): 2R, ..., R+1
+    """
+    if col % 2 == 0:
+        # Down
+        return (col * total_rows) + row + 1
+    else:
+        # Up
+        return (col * total_rows) + (total_rows - row)

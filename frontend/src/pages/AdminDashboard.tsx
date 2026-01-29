@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, Download, RefreshCw, LayoutGrid } from 'lucide-react';
-import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, downloadStudentWiseExcel } from '../utils/api';
-import type { SeatingResult, GenerateResponse, UploadFileResponse, Stats } from '../types';
+import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, downloadStudentWiseExcel, getSessionSeating } from '../utils/api';
+import type { SeatingResult, UploadFileResponse, Stats } from '../types';
 import SeatingGrid from '../components/seating/SeatingGrid';
 import StatCards from '../components/layout/StatCards';
 
@@ -15,12 +15,15 @@ const AdminDashboard = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // State for Results
-    const [response, setResponse] = useState<GenerateResponse | null>(null);
+    // const [response, setResponse] = useState<GenerateResponse | null>(null); // Removed, handled by availableSessions
     const [selectedSession, setSelectedSession] = useState<string>('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [hasStudents, setHasStudents] = useState(false);
     const [backendError, setBackendError] = useState<boolean>(false);
+
+    const [availableSessions, setAvailableSessions] = useState<string[]>([]);
+    const [currentResult, setCurrentResult] = useState<SeatingResult | null>(null);
 
     // Initial load check
     useEffect(() => {
@@ -33,7 +36,11 @@ const AdminDashboard = () => {
             setBackendError(false);
             if (students.length > 0) {
                 setHasStudents(true);
-                handleGenerate(); // Auto generate if data exists
+                // We don't auto-generate full results anymore to save bandwidth, 
+                // but we could try to fetch available sessions if we had an endpoint for it.
+                // For now, let's just rely on the user clicking "Refresh" or explicit generate.
+                // Or better: try to auto-trigger generate to get session list
+                handleGenerate();
             } else {
                 setHasStudents(false);
             }
@@ -117,15 +124,45 @@ const AdminDashboard = () => {
                 // FN comes before AN
                 return aIsFN ? -1 : 1;
             });
-            res.sessions = sortedSessions;
-            setResponse(res);
-            // Preserve session or default to first
-            if (res.sessions.length > 0) {
-                setSelectedSession(prev => res.sessions.includes(prev) ? prev : res.sessions[0]);
+
+            setAvailableSessions(sortedSessions);
+
+            // Default to first session if none selected or current invalid
+            if (sortedSessions.length > 0) {
+                if (!sortedSessions.includes(selectedSession)) {
+                    setSelectedSession(sortedSessions[0]);
+                } else {
+                    // Force re-fetch for current session
+                    fetchSessionDetails(selectedSession);
+                }
+            } else {
+                setSelectedSession('');
+                setCurrentResult(null);
             }
+
         } catch (err) {
             console.error(err);
             setError('Failed to generate seating allocation.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Fetch details when session changes
+    useEffect(() => {
+        if (selectedSession) {
+            fetchSessionDetails(selectedSession);
+        }
+    }, [selectedSession]);
+
+    const fetchSessionDetails = async (session: string) => {
+        setIsLoading(true);
+        try {
+            const result = await getSessionSeating(session);
+            setCurrentResult(result);
+        } catch (err) {
+            console.error(err);
+            setError(`Failed to load details for session ${session}`);
         } finally {
             setIsLoading(false);
         }
@@ -136,8 +173,7 @@ const AdminDashboard = () => {
     const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
 
     // --- Helpers ---
-    const currentResult: SeatingResult | null =
-        response && selectedSession ? response.results[selectedSession] : null;
+    // currentResult is now state, managed by fetchSessionDetails
 
     // Initialize filters when result changes
     useEffect(() => {
@@ -204,7 +240,7 @@ const AdminDashboard = () => {
     const stats: Stats = {
         totalStudents: currentResult?.totalStudents || 0,
         hallsUsed: currentResult?.hallsUsed || 0,
-        sessions: response?.sessions.length || 0,
+        sessions: availableSessions.length || 0,
         departmentBreakdown,
         subjectBreakdown,
     };
@@ -399,14 +435,14 @@ const AdminDashboard = () => {
                     )}
 
                     {/* Results Content */}
-                    {!isLoading && response && response.sessions.length > 0 && (
+                    {!isLoading && availableSessions.length > 0 && (
                         <>
                             {/* Controls Bar */}
                             <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 flex flex-wrap items-center justify-between gap-4">
 
                                 {/* Session Switcher */}
                                 <div className="flex flex-wrap gap-2">
-                                    {response.sessions.map(session => (
+                                    {availableSessions.map(session => (
                                         <button
                                             key={session}
                                             onClick={() => setSelectedSession(session)}

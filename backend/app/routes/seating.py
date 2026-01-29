@@ -124,13 +124,90 @@ def generate_seating():
 
         return jsonify({
             'success': True, 
-            'sessions': list(results.keys()),
-            'results': results
+            'sessions': list(results.keys())
         }), 200
         
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+@bp.route('/seating/<session_key>', methods=['GET'])
+def get_session_seating(session_key):
+    """
+    Get detailed seating result for a specific session.
+    """
+    try:
+        # Check if session exists
+        exists = db.session.query(Allocation).filter_by(session_key=session_key).first()
+        if not exists:
+             return jsonify({'error': 'Session not found'}), 404
+
+        result = reconstruct_seating_result(session_key)
+        if not result:
+             return jsonify({'error': 'Failed to reconstruct results'}), 500
+             
+        # Convert to JSON response format
+        halls_response = []
+        for hs in result.halls:
+            grid_response = []
+            for row in hs.grid:
+                row_response = []
+                for seat in row:
+                    seat_data = {
+                        'row': seat.row,
+                        'col': seat.col,
+                        'subject': seat.subject,
+                        'department': seat.department,
+                        'seatNumber': seat.seatNumber,
+                        'student': None
+                    }
+                    if seat.student:
+                        seat_data['student'] = {
+                            'registerNumber': seat.student.registerNumber,
+                            'subjectCode': seat.student.subjectCode,
+                            'department': seat.student.department,
+                            'examDate': seat.student.examDate,
+                            'session': seat.student.session
+                        }
+                    row_response.append(seat_data)
+                grid_response.append(row_response)
+            
+            halls_response.append({
+                'hall': {
+                    'id': hs.hall.id,
+                    'name': hs.hall.name,
+                    'block': hs.hall.block,
+                    'rows': hs.hall.rows,
+                    'columns': hs.hall.columns,
+                    'capacity': hs.hall.capacity
+                },
+                'grid': grid_response,
+                'studentsCount': hs.studentsCount
+            })
+
+        response_data = {
+            'totalStudents': result.totalStudents,
+            'hallsUsed': result.hallsUsed,
+            'halls': halls_response,
+            'studentAllocation': [
+                {
+                    'registerNumber': sa.registerNumber,
+                    'department': sa.department,
+                    'subject': sa.subject,
+                    'hallName': sa.hallName,
+                    'row': sa.row,
+                    'col': sa.col,
+                    'seatNumber': sa.seatNumber
+                }
+                for sa in result.studentAllocation
+            ]
+        }
+        
+        return jsonify(response_data), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 def reconstruct_seating_result(session_key):
     """Reconstruct SeatingResult object from Database for a given session"""
