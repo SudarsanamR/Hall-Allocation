@@ -1,7 +1,7 @@
 """
 Upload Route - Handle file uploads and student data parsing
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 import os
 from werkzeug.utils import secure_filename
 from app.models import db
@@ -31,8 +31,9 @@ def upload_file():
     try:
         # Save file temporarily
         filename = secure_filename(file.filename)
-        os.makedirs('uploads', exist_ok=True)
-        file_path = os.path.join('uploads', filename)
+        upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+        os.makedirs(upload_folder, exist_ok=True)
+        file_path = os.path.join(upload_folder, filename)
         file.save(file_path)
         
         # Parse file
