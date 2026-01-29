@@ -56,18 +56,33 @@ export const generateSeating = async (): Promise<GenerateResponse> => {
 };
 
 // Download Excel
-export const downloadHallWiseExcel = (session?: string): void => {
+import { open } from '@tauri-apps/plugin-shell';
+
+// Download Excel
+export const downloadHallWiseExcel = async (session?: string): Promise<void> => {
     const url = session
         ? `${API_BASE_URL}/download/hall-wise?session=${encodeURIComponent(session)}`
         : `${API_BASE_URL}/download/hall-wise`;
-    window.open(url, '_blank');
+
+    // Check if running in Tauri
+    if (window.__TAURI__) {
+        await open(url);
+    } else {
+        window.open(url, '_blank');
+    }
 };
 
-export const downloadStudentWiseExcel = (session?: string): void => {
+export const downloadStudentWiseExcel = async (session?: string): Promise<void> => {
     const url = session
         ? `${API_BASE_URL}/download/student-wise?session=${encodeURIComponent(session)}`
         : `${API_BASE_URL}/download/student-wise`;
-    window.open(url, '_blank');
+
+    // Check if running in Tauri
+    if (window.__TAURI__) {
+        await open(url);
+    } else {
+        window.open(url, '_blank');
+    }
 };
 
 // Get current students
