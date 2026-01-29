@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Hall, Student, GenerateResponse, UploadFileResponse } from '../types';
+import type { Hall, Student, UploadFileResponse, SeatingResult } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || `http://127.0.0.1:5001/api`;
 

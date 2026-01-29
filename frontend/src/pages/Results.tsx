@@ -2,10 +2,9 @@
 import { useState, useEffect } from 'react';
 import { Download, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import { downloadHallWiseExcel, downloadStudentWiseExcel, generateSeating } from '../utils/api';
-import type { GenerateResponse } from '../types';
 
 const Results = () => {
-    const [response, setResponse] = useState<GenerateResponse | null>(null);
+    const [sessions, setSessions] = useState<string[]>([]);
     const [selectedSession, setSelectedSession] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -18,7 +17,7 @@ const Results = () => {
         setLoading(true);
         try {
             const res = await generateSeating();
-            setResponse(res);
+            setSessions(res.sessions);
             if (res.sessions.length > 0) {
                 setSelectedSession(res.sessions[0]);
             }
@@ -45,7 +44,7 @@ const Results = () => {
         );
     }
 
-    if (error || !response) {
+    if (error || sessions.length === 0) {
         return (
             <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
                 <AlertCircle className="text-red-600 mx-auto mb-2" size={32} />
@@ -66,9 +65,9 @@ const Results = () => {
             </div>
 
             {/* Session Selector */}
-            {response.sessions.length > 0 && (
+            {sessions.length > 0 && (
                 <div className="flex gap-2 mb-6">
-                    {response.sessions.map(session => (
+                    {sessions.map(session => (
                         <button
                             key={session}
                             onClick={() => setSelectedSession(session)}
