@@ -277,7 +277,7 @@ const AdminDashboard = () => {
                         <div>
                             <h3 className="font-semibold text-red-900 dark:text-red-200">Backend Service Unavailable</h3>
                             <p className="text-sm text-red-700 dark:text-red-300">
-                                Could not connect to the server. Please check if the backend is running at http://localhost:5000
+                                Could not connect to the server. Please check if the backend is running at http://localhost:5001
                             </p>
                         </div>
                     </div>
