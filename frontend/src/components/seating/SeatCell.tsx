@@ -64,7 +64,7 @@ const SeatCell = ({
                 `}
             >
                 <div className={`w-8 h-1 ${isDimmed ? 'bg-gray-200' : 'bg-black/5'} rounded-full mb-1`}></div>
-                <span className={`text-sm font-bold truncate px-1 max-w-full ${isDimmed ? 'text-gray-400' : ''}`}>
+                <span className={`text-[10px] sm:text-xs md:text-sm font-bold truncate px-0.5 md:px-1 max-w-full ${isDimmed ? 'text-gray-400' : ''}`}>
                     {isMasked ? '• • •' : seat.student.registerNumber.slice(-3)}
                 </span>
             </div>
