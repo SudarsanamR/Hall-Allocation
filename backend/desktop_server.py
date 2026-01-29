@@ -44,6 +44,19 @@ try:
     logger.info(f"Upload Folder set to: {upload_folder}")
 
     if __name__ == '__main__':
+        # Start a thread to monitor parent process (Tauri) via stdin
+        import threading
+        def monitor_parent():
+            try:
+                # Read blocking. If parent closes pipe (exit), returns empty or raises.
+                sys.stdin.read()
+            except:
+                pass
+            logger.info("Parent process closed stdin (app exit). Shutting down...")
+            os._exit(0)
+            
+        threading.Thread(target=monitor_parent, daemon=True).start()
+
         logger.info("Starting Flask server on port 5001")
         app.run(debug=False, host='127.0.0.1', port=5001)
 
