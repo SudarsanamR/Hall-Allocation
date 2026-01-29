@@ -4,7 +4,7 @@ Upload Route - Handle file uploads and student data parsing
 from flask import Blueprint, request, jsonify, current_app
 import os
 from werkzeug.utils import secure_filename
-from app.models import db
+from app.models import db, Student
 from app.services import parse_file, validate_student_data
 
 bp = Blueprint('upload', __name__, url_prefix='/api')
@@ -36,16 +36,28 @@ def upload_file():
         file_path = os.path.join(upload_folder, filename)
         file.save(file_path)
         
-        # Parse file
+        # Parse file - returns list of Student objects (transient)
         from app.services import parse_pdf
         students = parse_pdf(file_path)
         
         # Validate data
         warnings = validate_student_data(students)
         
-        # Store in database
-        db.students = students
-        db.seating_result = None  # Reset previous results
+        # Auto-Wipe: Clear existing data for fresh start
+        # This matches the requirement: "Show only till next exam hall allocation"
+        try:
+            # Delete all allocations first (foreign key conceptual dependency)
+            from app.models import Allocation, Student
+            Allocation.query.delete()
+            Student.query.delete()
+            
+            # Add new students
+            db.session.add_all(students)
+            db.session.commit()
+            
+        except Exception as db_err:
+            db.session.rollback()
+            raise db_err
         
         # Clean up file
         os.remove(file_path)
@@ -81,12 +93,15 @@ def get_students():
             'department': s.department,
             'examDate': s.examDate,
             'session': s.session
-        } for s in db.students
+        } for s in Student.query.all()
     ]
     return jsonify(students), 200
 
 @bp.route('/reset', methods=['DELETE'])
 def reset_data():
     """Reset all student data and seating results"""
-    db.reset_students()
+    Student.query.delete()
+    from app.models import Allocation
+    Allocation.query.delete()
+    db.session.commit()
     return jsonify({'success': True, 'message': 'All data has been reset'}), 200

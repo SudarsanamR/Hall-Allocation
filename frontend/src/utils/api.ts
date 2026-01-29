@@ -44,6 +44,10 @@ export const deleteHall = async (id: string): Promise<void> => {
     await api.delete(`/halls/${id}`);
 };
 
+export const reorderBlocks = async (newOrder: string[]): Promise<void> => {
+    await api.post('/halls/reorder_blocks', newOrder);
+};
+
 export const initializeDefaultHalls = async (): Promise<Hall[]> => {
     const response = await api.post('/halls/initialize');
     return response.data;

@@ -1,6 +1,8 @@
 """
 Models package
 """
-from .database import Hall, Student, Seat, HallSeating, StudentAllocation, SeatingResult, db
+from .sql import Hall, Student, Allocation
+from .schemas import Seat, HallSeating, StudentAllocation, SeatingResult
+from app.extensions import db
 
-__all__ = ['Hall', 'Student', 'Seat', 'HallSeating', 'StudentAllocation', 'SeatingResult', 'db']
+__all__ = ['Hall', 'Student', 'Allocation', 'Seat', 'HallSeating', 'StudentAllocation', 'SeatingResult', 'db']

@@ -61,10 +61,10 @@ def parse_pdf(file_path):
                         department = get_dept_from_code(dept_code)
                         
                         student = Student(
-                            registerNumber=reg_no,
-                            subjectCode=current_subject_code,
+                            register_number=reg_no,
+                            subject_code=current_subject_code,
                             department=department,
-                            examDate=current_exam_date,
+                            exam_date=current_exam_date,
                             session=current_session
                         )
                         students.append(student)

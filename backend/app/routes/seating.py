@@ -2,9 +2,10 @@
 Seating Route - Generate seating arrangements and download results
 """
 from flask import Blueprint, request, jsonify, send_file
-from app.models import db, SeatingResult
+from app.models import db, Student, Hall, Allocation, SeatingResult, HallSeating, Seat
 from app.services import allocate_seats, generate_hall_wise_excel, generate_student_wise_excel
 from collections import defaultdict
+import uuid
 
 bp = Blueprint('seating', __name__, url_prefix='/api')
 
@@ -14,74 +15,97 @@ def generate_seating():
     Generate seating arrangements for all sessions found in student data.
     Groups students by (ExamDate, Session) and runs allocation for each group.
     """
-    if not db.students:
+    students = Student.query.all()
+    if not students:
         return jsonify({'error': 'No student data available. Please upload student data first.'}), 400
     
-    if not db.halls:
+    halls = Hall.query.all()
+    if not halls:
         return jsonify({'error': 'No halls configured. Please add halls first.'}), 400
     
     try:
         # 1. Group students by Session (Date + Session)
-        # Key format: "DD-MMM-YYYY_FN" or similar
         session_groups = defaultdict(list)
-        for student in db.students:
-            # Create a simplified key for grouping
+        for student in students:
             key = f"{student.examDate}_{student.session}"
             session_groups[key].append(student)
             
         # 2. Iterate and Allocate
         results = {}
-        db.seating_results = {} # Reset
+        
+        # Clear existing allocations?
+        # Requirement: "Show only till next exam hall allocation"
+        # The upload route already Clears All allocations.
+        # But if we call generate multiple times without upload (e.g. changing settings),
+        # we should probably wipe allocations for the sessions we are generating.
+        # For simplicity and safety, let's wipe ALL allocations when generating new ones.
+        Allocation.query.delete()
+        db.session.commit()
         
         for session_key, group_students in session_groups.items():
-            # Run allocation for this specific group
-            # Note: We pass all halls available. 
-            # In a real scenario, you might want to track hall usage across parallel sessions?
-            # But usually Date+Session implies unique time slot, so all halls are fresh.
-            result = allocate_seats(group_students, db.halls)
+            result = allocate_seats(group_students, halls)
             
-            # Store in DB
-            db.seating_results[session_key] = result
+            # Save to DB
+            allocations_to_add = []
+            for sa in result.studentAllocation:
+                alloc = Allocation(
+                    register_number=sa.registerNumber,
+                    department=sa.department,
+                    subject_code=sa.subject,
+                    hall_name=sa.hallName,
+                    row_num=sa.row,
+                    col_num=sa.col,
+                    seat_number=sa.seatNumber,
+                    session_key=session_key
+                )
+                allocations_to_add.append(alloc)
+            
+            db.session.add_all(allocations_to_add)
             
             # Format for Response
+            # We can use the 'result' object directly as it has the structure we need
+            halls_response = []
+            for hs in result.halls:
+                grid_response = []
+                for row in hs.grid:
+                    row_response = []
+                    for seat in row:
+                        seat_data = {
+                            'row': seat.row,
+                            'col': seat.col,
+                            'subject': seat.subject,
+                            'department': seat.department,
+                            'seatNumber': seat.seatNumber,
+                            'student': None
+                        }
+                        if seat.student:
+                            seat_data['student'] = {
+                                'registerNumber': seat.student.registerNumber,
+                                'subjectCode': seat.student.subjectCode,
+                                'department': seat.student.department,
+                                'examDate': seat.student.examDate,
+                                'session': seat.student.session
+                            }
+                        row_response.append(seat_data)
+                    grid_response.append(row_response)
+                
+                halls_response.append({
+                    'hall': {
+                        'id': hs.hall.id, # SQL Model has id
+                        'name': hs.hall.name,
+                        'block': hs.hall.block,
+                        'rows': hs.hall.rows,
+                        'columns': hs.hall.columns,
+                        'capacity': hs.hall.capacity
+                    },
+                    'grid': grid_response,
+                    'studentsCount': hs.studentsCount
+                })
+
             results[session_key] = {
                 'totalStudents': result.totalStudents,
                 'hallsUsed': result.hallsUsed,
-                'halls': [
-                    {
-                        'hall': {
-                            'id': hs.hall.id,
-                            'name': hs.hall.name,
-                            'block': hs.hall.block,
-                            'rows': hs.hall.rows,
-                            'columns': hs.hall.columns,
-                            'capacity': hs.hall.capacity
-                        },
-                        'grid': [
-                            [
-                                # DEBUG LOGGING
-                                print(f"DEBUG: Processing Seat [{seat.row},{seat.col}] - SeatNo: {seat.seatNumber}") or {
-                                    'row': seat.row,
-                                    'col': seat.col,
-                                    'student': {
-                                        'registerNumber': seat.student.registerNumber,
-                                        'subjectCode': seat.student.subjectCode,
-                                        'department': seat.student.department,
-                                        'examDate': seat.student.examDate,
-                                        'session': seat.student.session
-                                    } if seat.student else None,
-                                    'subject': seat.subject,
-                                    'department': seat.department,
-                                    'seatNumber': seat.seatNumber
-                                }
-                                for seat in row
-                            ]
-                            for row in hs.grid
-                        ],
-                        'studentsCount': hs.studentsCount
-                    }
-                    for hs in result.halls
-                ],
+                'halls': halls_response,
                 'studentAllocation': [
                     {
                         'registerNumber': sa.registerNumber,
@@ -96,34 +120,123 @@ def generate_seating():
                 ]
             }
 
-        # Return all results keyed by session
+        db.session.commit()
+
         return jsonify({
             'success': True, 
-            'sessions': list(results.keys()), # List of available session keys
-            'results': results # Detailed map
+            'sessions': list(results.keys()),
+            'results': results
         }), 200
         
     except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+def reconstruct_seating_result(session_key):
+    """Reconstruct SeatingResult object from Database for a given session"""
+    halls = Hall.query.all()
+    hall_map = {h.name: h for h in halls}
+    
+    allocations = Allocation.query.filter_by(session_key=session_key).all()
+    if not allocations:
+        return None
+        
+    # Group by Hall
+    hall_allocs = defaultdict(list)
+    student_allocations = []
+    
+    for alloc in allocations:
+        hall_allocs[alloc.hall_name].append(alloc)
+        # Add to flat list
+        student_allocations.append(type('StudentAllocation', (), {
+            'registerNumber': alloc.register_number,
+            'department': alloc.department,
+            'subject': alloc.subject_code,
+            'hallName': alloc.hall_name,
+            'row': alloc.row_num,
+            'col': alloc.col_num,
+            'seatNumber': alloc.seat_number
+        }))
+
+    hall_seating_list = []
+    
+    # Process each hall
+    for hall_name, allocs in hall_allocs.items():
+        hall = hall_map.get(hall_name)
+        if not hall:
+            continue # specific hall configs might have changed, skip safety
+            
+        # Create empty grid
+        grid = []
+        # Reconstruct standard seats (simplified snake logic or just coordinates)
+        # Note: We rely on row/col stored in Allocation
+        from app.services.seating_algorithm import get_snake_seat_number
+        
+        for r in range(hall.rows):
+            row_seats = []
+            for c in range(hall.columns):
+                seat_num = get_snake_seat_number(r, c, hall.rows)
+                seat = Seat(row=r, col=c, seatNumber=str(seat_num))
+                row_seats.append(seat)
+            grid.append(row_seats)
+            
+        # Fill grid
+        students_count = 0
+        for alloc in allocs:
+            if 0 <= alloc.row_num < hall.rows and 0 <= alloc.col_num < hall.columns:
+                seat = grid[alloc.row_num][alloc.col_num]
+                seat.department = alloc.department
+                seat.subject = alloc.subject_code
+                # Reconstruct partial Student object for Excel generator
+                # Excel gen checks: seat.student.registerNumber, subjectCode, department, examDate, session
+                # We need examDate/session. We can parse it from session_key "25-Nov-2025_FN"
+                parts = session_key.rsplit('_', 1)
+                e_date = parts[0]
+                sess = parts[1] if len(parts) > 1 else ""
+                
+                seat.student = type('Student', (), {
+                    'registerNumber': alloc.register_number,
+                    'subjectCode': alloc.subject_code,
+                    'department': alloc.department,
+                    'examDate': e_date,
+                    'session': sess
+                })
+                students_count += 1
+                
+        hall_seating_list.append(HallSeating(hall=hall, grid=grid, studentsCount=students_count))
+        
+    return SeatingResult(
+        totalStudents=len(allocations),
+        hallsUsed=len(hall_seating_list),
+        halls=hall_seating_list,
+        studentAllocation=student_allocations
+    )
 
 @bp.route('/download/hall-wise', methods=['GET'])
 def download_hall_wise():
     """Download hall-wise seating Excel file for a specific session"""
     session_key = request.args.get('session')
     
-    if not session_key or session_key not in db.seating_results:
-        # Fallback to first available if only one exists? 
-        # Or return error asking for session
-        if len(db.seating_results) == 1:
-             session_key = list(db.seating_results.keys())[0]
-        else:
-            return jsonify({'error': 'Session parameter required'}), 400
+    # Get available sessions from DB
+    distinct_sessions = db.session.query(Allocation.session_key).distinct().all()
+    available_sessions = [s[0] for s in distinct_sessions]
     
-    result = db.seating_results[session_key]
+    if not session_key or session_key not in available_sessions:
+        if len(available_sessions) == 1:
+             session_key = available_sessions[0]
+        elif len(available_sessions) > 0:
+             # Default to first if not specified and multiple exist? Or error?
+             # Let's take first
+             session_key = available_sessions[0]
+        else:
+            return jsonify({'error': 'No allocations found'}), 404
+            
+    result = reconstruct_seating_result(session_key)
+    if not result:
+        return jsonify({'error': 'Failed to reconstruct results'}), 500
     
     try:
         excel_file = generate_hall_wise_excel(result)
-        # Create filename based on session
         clean_name = session_key.replace('_', ' ')
         return send_file(
             excel_file,
@@ -139,13 +252,18 @@ def download_student_wise():
     """Download student-wise allocation Excel file"""
     session_key = request.args.get('session')
     
-    if not session_key or session_key not in db.seating_results:
-        if len(db.seating_results) == 1:
-             session_key = list(db.seating_results.keys())[0]
+    distinct_sessions = db.session.query(Allocation.session_key).distinct().all()
+    available_sessions = [s[0] for s in distinct_sessions]
+    
+    if not session_key or session_key not in available_sessions:
+        if len(available_sessions) == 1:
+             session_key = available_sessions[0]
+        elif len(available_sessions) > 0:
+             session_key = available_sessions[0]
         else:
-             return jsonify({'error': 'Session parameter required'}), 400
+             return jsonify({'error': 'No allocations found'}), 404
             
-    result = db.seating_results[session_key]
+    result = reconstruct_seating_result(session_key)
     
     try:
         excel_file = generate_student_wise_excel(result)
@@ -171,60 +289,87 @@ def search_student():
     if not reg_no:
         return jsonify({'error': 'Register number is required'}), 400
 
+    # Query Allocation table
+    allocations = Allocation.query.filter_by(register_number=reg_no).all()
+    
     matches = []
+    
+    for alloc in allocations:
+        # We need to construct the 'hallSeating' grid view for the frontend
+        # This is expensive if we do it for every search, but necessary for the UI "Sketch" view.
+        # Ideally, we reconstruct ONLY the hall this student is in.
+        
+        hall = Hall.query.filter_by(name=alloc.hall_name).first()
+        if not hall:
+            continue
+            
+        # Get all allocations for THIS hall and THIS session to build grid
+        hall_allocs = Allocation.query.filter_by(
+            session_key=alloc.session_key, 
+            hall_name=alloc.hall_name
+        ).all()
+        
+        # Build Grid
+        from app.services.seating_algorithm import get_snake_seat_number
+        grid_data = []
+        students_count = len(hall_allocs)
+        
+        # Fill map: (row, col) -> alloc
+        seat_map = {(a.row_num, a.col_num): a for a in hall_allocs}
+        
+        for r in range(hall.rows):
+            row_data = []
+            for c in range(hall.columns):
+                seat_num = get_snake_seat_number(r, c, hall.rows)
+                cell_alloc = seat_map.get((r, c))
+                
+                seat_obj = {
+                    'row': r,
+                    'col': c,
+                    'seatNumber': str(seat_num),
+                    'student': None,
+                    'subject': None,
+                    'department': None
+                }
+                
+                if cell_alloc:
+                    parts = cell_alloc.session_key.rsplit('_', 1)
+                    e_date = parts[0]
+                    sess = parts[1] if len(parts) > 1 else ""
+                    seat_obj['student'] = {
+                        'registerNumber': cell_alloc.register_number,
+                        'subjectCode': cell_alloc.subject_code,
+                        'department': cell_alloc.department,
+                        'examDate': e_date,
+                        'session': sess
+                    }
+                    seat_obj['subject'] = cell_alloc.subject_code
+                    seat_obj['department'] = cell_alloc.department
+                
+                row_data.append(seat_obj)
+            grid_data.append(row_data)
 
-    if not db.seating_results:
-        return jsonify({'error': 'Allocation not generated yet. Please contact admin.'}), 404
+        hall_data = {
+            'hall': {
+                'id': hall.id,
+                'name': hall.name,
+                'block': hall.block,
+                'rows': hall.rows,
+                'columns': hall.columns,
+                'capacity': hall.capacity
+            },
+            'grid': grid_data,
+            'studentsCount': students_count
+        }
 
-    for session_key, result in db.seating_results.items():
-        for allocation in result.studentAllocation:
-             if allocation.registerNumber == reg_no:
-                 # Found the student. Now find the hall grid.
-                 hall_data = None
-                 for hs in result.halls:
-                     if hs.hall.name == allocation.hallName:
-                         # Serialize HallSeating
-                         hall_data = {
-                            'hall': {
-                                'id': hs.hall.id,
-                                'name': hs.hall.name,
-                                'block': hs.hall.block,
-                                'rows': hs.hall.rows,
-                                'columns': hs.hall.columns,
-                                'capacity': hs.hall.capacity
-                            },
-                            'grid': [
-                                [
-                                    {
-                                        'row': seat.row,
-                                        'col': seat.col,
-                                        'student': {
-                                            'registerNumber': seat.student.registerNumber,
-                                            'subjectCode': seat.student.subjectCode,
-                                            'department': seat.student.department,
-                                            'examDate': seat.student.examDate,
-                                            'session': seat.student.session
-                                        } if seat.student else None,
-                                        'subject': seat.subject,
-                                        'department': seat.department,
-                                        'seatNumber': seat.seatNumber
-                                    }
-                                    for seat in row
-                                ]
-                                for row in hs.grid
-                            ],
-                            'studentsCount': hs.studentsCount
-                         }
-                         break
-
-                 matches.append({
-                     'session': session_key,
-                     'subject': allocation.subject,
-                     'hallName': allocation.hallName,
-                     'seatNumber': allocation.seatNumber,
-                     'formattedSession': session_key.replace('_', ' '),
-                     'hallSeating': hall_data
-                 })
+        matches.append({
+            'session': alloc.session_key,
+            'subject': alloc.subject_code,
+            'hallName': alloc.hall_name,
+            'seatNumber': alloc.seat_number,
+            'formattedSession': alloc.session_key.replace('_', ' '),
+            'hallSeating': hall_data
+        })
     
     if not matches:
         return jsonify({'error': 'No allocation found for this register number'}), 404

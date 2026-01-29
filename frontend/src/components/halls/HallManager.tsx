@@ -17,7 +17,7 @@ import {
     useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import axios from 'axios';
+import { reorderBlocks } from '../../utils/api';
 import type { Hall } from '../../types';
 
 interface HallManagerProps {
@@ -144,7 +144,7 @@ const HallManager = ({ halls, onEdit, onDelete, onAdd }: HallManagerProps) => {
                 const newOrder = arrayMove(items, oldIndex, newIndex);
 
                 // Persist to backend
-                axios.post('http://localhost:5000/api/halls/reorder_blocks', newOrder)
+                reorderBlocks(newOrder)
                     .catch(err => console.error('Failed to save block order:', err));
 
                 return newOrder;
