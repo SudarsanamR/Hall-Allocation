@@ -111,10 +111,31 @@ def delete_hall(hall_id):
 
 @bp.route('/halls/initialize', methods=['POST'])
 def initialize_default_halls():
-    """Initialize default hall configuration"""
+    """Initialize default hall configuration (Force Reset)"""
     # Clear existing halls
     Hall.query.delete()
+    db.session.commit()
     
+    # Re-seed
+    seeded = bootstrap_halls(force=True)
+    
+    return jsonify([h.to_dict() for h in seeded]), 200
+
+@bp.route('/halls/reorder_blocks', methods=['POST'])
+def reorder_blocks():
+    """Reorder halls based on block priority - Not persisted in DB schema currently"""
+    return jsonify({'message': 'Reordering not supported in persistent mode yet'}), 200
+
+def bootstrap_halls(force=False):
+    """
+    Seeds default halls if table is empty or force=True.
+    Returns list of seeded halls (or empty list if skipped).
+    """
+    if not force:
+        existing_count = Hall.query.count()
+        if existing_count > 0:
+            return []
+
     halls_to_add = []
     for hall_data in DEFAULT_HALLS:
         hall = Hall(
@@ -129,14 +150,4 @@ def initialize_default_halls():
     
     db.session.add_all(halls_to_add)
     db.session.commit()
-    
-    return jsonify([h.to_dict() for h in halls_to_add]), 200
-
-@bp.route('/halls/reorder_blocks', methods=['POST'])
-def reorder_blocks():
-    """Reorder halls based on block priority - Not persisted in DB schema currently"""
-    # Since DB doesn't store order index, we can't persist this easily without schema change.
-    # For now, we will just return success but warn it's ephemeral or implemented on frontend.
-    # Alternatively, we could update a 'sort_order' column if we added one.
-    # Given the complexity, let's skip persistent reordering or assume frontend sorts it.
-    return jsonify({'message': 'Reordering not supported in persistent mode yet'}), 200
+    return halls_to_add

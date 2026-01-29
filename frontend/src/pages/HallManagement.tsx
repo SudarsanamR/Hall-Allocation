@@ -162,6 +162,21 @@ const HallManagement = () => {
                 </div>
             )}
 
+            {/* Always show Init Options or at least available */}
+            {halls.length > 0 && !showForm && (
+                <div className="flex justify-end mb-6">
+                    <button
+                        onClick={handleInitializeDefaults}
+                        disabled={initializing}
+                        className="flex items-center gap-2 text-sm text-gray-500 hover:text-primary-600 transition-colors"
+                        title="Reset all halls to default configuration"
+                    >
+                        <RefreshCw size={16} className={initializing ? 'animate-spin' : ''} />
+                        {initializing ? 'Resetting...' : 'Reset to Defaults'}
+                    </button>
+                </div>
+            )}
+
             {halls.length > 0 && !showForm && (
                 <HallManager
                     halls={halls}

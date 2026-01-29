@@ -33,6 +33,10 @@ def create_app():
     with app.app_context():
         from app import models  # Import models so they are registered with SQLAlchemy
         db.create_all()
+        
+        # Auto-seed default halls if empty
+        from app.routes.halls import bootstrap_halls
+        bootstrap_halls()
 
     # Register blueprints
     from app.routes import upload, halls, seating
