@@ -83,6 +83,11 @@ export const generateSeating = async (): Promise<{ success: boolean, sessions: s
     return response.data;
 };
 
+export const getExistingSessions = async (): Promise<{ success: boolean, sessions: string[] }> => {
+    const response = await api.get('/sessions');
+    return response.data;
+};
+
 export const clearAllocations = async (): Promise<void> => {
     await api.delete('/clear');
 };

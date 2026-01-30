@@ -9,6 +9,19 @@ import uuid
 
 bp = Blueprint('seating', __name__, url_prefix='/api')
 
+@bp.route('/sessions', methods=['GET'])
+def get_sessions():
+    """
+    Get list of sessions that currently have allocations.
+    Used for lightweight polling.
+    """
+    try:
+        distinct_sessions = db.session.query(Allocation.session_key).distinct().all()
+        sessions = [s[0] for s in distinct_sessions]
+        return jsonify({'success': True, 'sessions': sessions}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @bp.route('/generate', methods=['POST'])
 def generate_seating():
     """

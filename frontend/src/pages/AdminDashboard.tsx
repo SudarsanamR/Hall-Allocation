@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, Download, RefreshCw, LayoutGrid, Trash2 } from 'lucide-react';
-import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, downloadStudentWiseExcel, getSessionSeating, clearAllocations } from '../utils/api';
+import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, downloadStudentWiseExcel, getSessionSeating, clearAllocations, getExistingSessions } from '../utils/api';
 import type { SeatingResult, UploadFileResponse, Stats } from '../types';
 import SeatingGrid from '../components/seating/SeatingGrid';
 import StatCards from '../components/layout/StatCards';
@@ -36,11 +36,8 @@ const AdminDashboard = () => {
             setBackendError(false);
             if (students.length > 0) {
                 setHasStudents(true);
-                // We don't auto-generate full results anymore to save bandwidth, 
-                // but we could try to fetch available sessions if we had an endpoint for it.
-                // For now, let's just rely on the user clicking "Refresh" or explicit generate.
-                // Or better: try to auto-trigger generate to get session list
-                handleGenerate();
+                // Load existing sessions initially without re-generating
+                fetchSessions();
             } else {
                 setHasStudents(false);
             }
@@ -48,6 +45,54 @@ const AdminDashboard = () => {
             console.error("Backend check failed:", err);
             setHasStudents(false);
             setBackendError(true);
+        }
+    };
+
+    // Polling for Sync
+    useEffect(() => {
+        if (!hasStudents) return;
+
+        const interval = setInterval(() => {
+            fetchSessions(true); // silent update
+        }, 2000); // Poll every 2 seconds
+
+        return () => clearInterval(interval);
+    }, [hasStudents]);
+
+    const fetchSessions = async (silent = false) => {
+        if (!silent) setIsLoading(true);
+        try {
+            const res = await getExistingSessions();
+            // Sort sessions: FN before AN (within same date)
+            const sortedSessions = [...res.sessions].sort((a, b) => {
+                const aIsFN = a.includes('FN');
+                const bIsFN = b.includes('FN');
+                if (aIsFN === bIsFN) return a.localeCompare(b);
+                return aIsFN ? -1 : 1;
+            });
+
+            setAvailableSessions(prev => {
+                // If list changed
+                if (JSON.stringify(prev) !== JSON.stringify(sortedSessions)) {
+                    // Check if we were cleared
+                    if (sortedSessions.length === 0) {
+                        setSelectedSession('');
+                        setCurrentResult(null);
+                    }
+                    return sortedSessions;
+                }
+                return prev;
+            });
+
+            // If we have sessions but none selected, select first
+            if (sortedSessions.length > 0 && !selectedSession) {
+                setSelectedSession(sortedSessions[0]);
+            }
+
+        } catch (err) {
+            console.error("Failed to fetch sessions", err);
+        } finally {
+            if (!silent) setIsLoading(false);
         }
     };
 
@@ -169,12 +214,15 @@ const AdminDashboard = () => {
         }
     };
 
-    // Fetch details when session changes
+    // Fetch details when session changes or when sessions list updates (if selected matches)
     useEffect(() => {
-        if (selectedSession) {
+        if (selectedSession && availableSessions.includes(selectedSession)) {
             fetchSessionDetails(selectedSession);
+        } else if (availableSessions.length > 0 && !selectedSession) {
+            // Fallback if current selection invalid/empty but sessions exist
+            setSelectedSession(availableSessions[0]);
         }
-    }, [selectedSession]);
+    }, [selectedSession, availableSessions]);
 
     const fetchSessionDetails = async (session: string) => {
         setIsLoading(true);
