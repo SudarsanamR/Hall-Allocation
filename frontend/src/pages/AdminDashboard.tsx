@@ -83,10 +83,9 @@ const AdminDashboard = () => {
                 return prev;
             });
 
-            // If we have sessions but none selected, select first
-            if (sortedSessions.length > 0 && !selectedSession) {
-                setSelectedSession(sortedSessions[0]);
-            }
+
+            // Loop logic removed. Initial selection is handled by useEffect at line 217.
+
 
         } catch (err) {
             console.error("Failed to fetch sessions", err);
