@@ -1,7 +1,6 @@
 import axios from 'axios';
 import type { Hall, Student, UploadFileResponse, SeatingResult } from '../types';
-// Check if running in Tauri
-const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI__;
+
 
 // Sync Requirement: Desktop should use Online Server
 // If PROD -> Use Render.
