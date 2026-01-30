@@ -1,7 +1,17 @@
 import axios from 'axios';
 import type { Hall, Student, UploadFileResponse, SeatingResult } from '../types';
+// Check if running in Tauri
+const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI__;
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://hall-allocation-7n1u.onrender.com/api' : 'http://127.0.0.1:5001/api');
+// Sync Requirement: Desktop should use Online Server
+// If PROD -> Use Render.
+// If DEV -> Use Localhost/Vite Env.
+
+const API_BASE_URL = import.meta.env.VITE_API_URL ||
+    (import.meta.env.PROD
+        ? 'https://hall-allocation-7n1u.onrender.com/api'
+        : 'http://127.0.0.1:5001/api'
+    );
 
 const api = axios.create({
     baseURL: API_BASE_URL,
