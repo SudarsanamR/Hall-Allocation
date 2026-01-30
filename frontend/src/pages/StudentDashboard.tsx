@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Search, MapPin, Armchair, ChevronRight } from 'lucide-react';
 import { searchStudent } from '../utils/api';
+import { validateRegisterNumber } from '../utils/validation';
 import SeatingGrid from '../components/seating/SeatingGrid';
 
 const StudentDashboard = () => {
@@ -14,18 +15,26 @@ const StudentDashboard = () => {
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!registerNumber.trim()) return;
-
-        setLoading(true);
         setError(null);
         setAllocations(null);
+
+        if (!registerNumber.trim()) return;
+
+        // Validation Step
+        const validation = validateRegisterNumber(registerNumber);
+        if (!validation.isValid) {
+            setError(validation.error || 'Invalid Registration Number');
+            return;
+        }
+
+        setLoading(true);
 
         try {
             const data = await searchStudent(registerNumber);
             if (data.allocations) {
                 setAllocations(data.allocations);
             } else {
-                setError('No allocation details found.');
+                setError('No allocation found for this register number');
             }
         } catch (err: any) {
             setError(err.response?.data?.error || 'Student not found or allocation not generated.');
