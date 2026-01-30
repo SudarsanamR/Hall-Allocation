@@ -1,10 +1,11 @@
 import axios from 'axios';
 import type { Hall, Student, UploadFileResponse, SeatingResult } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || `http://127.0.0.1:5001/api`;
+const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://hall-allocation-7n1u.onrender.com/api' : 'http://127.0.0.1:5001/api');
 
 const api = axios.create({
     baseURL: API_BASE_URL,
+    timeout: 15000, // 15 seconds timeout
     headers: {
         'Content-Type': 'application/json',
     },

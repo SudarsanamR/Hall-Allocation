@@ -14,15 +14,19 @@ const Login = () => {
         setLoading(true);
         setError('');
 
-        const success = await login(password);
-
-        if (success) {
-            localStorage.setItem('isAuthenticated', 'true');
-            navigate('/admin');
-        } else {
-            setError('Invalid Password');
+        try {
+            const success = await login(password);
+            if (success) {
+                localStorage.setItem('isAuthenticated', 'true');
+                navigate('/admin');
+            } else {
+                setError('Invalid Password or Server Error');
+            }
+        } catch (err) {
+            setError('An error occurred. Please try again.');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (
