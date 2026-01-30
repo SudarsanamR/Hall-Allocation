@@ -10,6 +10,16 @@ const api = axios.create({
     },
 });
 
+// Authentication
+export const login = async (password: string): Promise<boolean> => {
+    try {
+        const response = await api.post('/login', { password });
+        return response.data.success;
+    } catch {
+        return false;
+    }
+};
+
 // File Upload
 export const uploadFile = async (file: File): Promise<UploadFileResponse> => {
     const formData = new FormData();

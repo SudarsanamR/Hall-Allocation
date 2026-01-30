@@ -3,6 +3,8 @@ import TopBar from './components/layout/TopBar';
 import AdminDashboard from './pages/AdminDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import HallManagement from './pages/HallManagement';
+import Login from './pages/Login';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -14,8 +16,23 @@ function App() {
           <div className="w-full max-w-7xl mx-auto">
             <Routes>
               <Route path="/" element={<StudentDashboard />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/halls" element={<HallManagement />} />
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/halls"
+                element={
+                  <ProtectedRoute>
+                    <HallManagement />
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
           </div>
         </main>
