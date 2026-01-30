@@ -26,15 +26,46 @@ const api = axios.create({
 
 // Authentication
 // Authentication
-export const login = async (password: string): Promise<{ success: boolean; message?: string }> => {
+// Authentication
+export const login = async (username: string, password: string): Promise<{ success: boolean; message?: string }> => {
     try {
-        const response = await api.post('/login', { password });
+        const response = await api.post('/login', { username, password });
         return { success: response.data.success, message: response.data.message };
     } catch (error: any) {
         if (error.response && error.response.data) {
-            return { success: false, message: error.response.data.message || 'Invalid password' };
+            return { success: false, message: error.response.data.message || 'Invalid credentials' };
         }
-        return { success: false, message: 'Server connection failed. Is the backend running?' };
+        return { success: false, message: 'Server connection failed' };
+    }
+};
+
+export const register = async (data: any): Promise<{ success: boolean; message?: string }> => {
+    try {
+        const response = await api.post('/register', data);
+        return { success: response.data.success, message: response.data.message };
+    } catch (error: any) {
+        if (error.response && error.response.data) {
+            return { success: false, message: error.response.data.message || 'Registration failed' };
+        }
+        return { success: false, message: 'Server connection failed' };
+    }
+};
+
+export const getSecurityQuestion = async (username: string): Promise<{ success: boolean; question?: string; message?: string }> => {
+    try {
+        const response = await api.post('/get_security_question', { username });
+        return { success: true, question: response.data.question };
+    } catch (error: any) {
+        return { success: false, message: error.response?.data?.message || 'User not found' };
+    }
+};
+
+export const resetPassword = async (data: any): Promise<{ success: boolean; message?: string }> => {
+    try {
+        const response = await api.post('/reset_password', data);
+        return { success: true, message: response.data.message };
+    } catch (error: any) {
+        return { success: false, message: error.response?.data?.message || 'Reset failed' };
     }
 };
 

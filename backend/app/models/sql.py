@@ -60,3 +60,12 @@ class Allocation(db.Model):
     def col(self): return self.col_num
     @property
     def seatNumber(self): return self.seat_number
+
+class Admin(db.Model):
+    id = db.Column(db.String(36), primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    security_question = db.Column(db.String(255), nullable=False)
+    security_answer_hash = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+

@@ -4,6 +4,7 @@ import { Lock } from 'lucide-react';
 import { login } from '../utils/api';
 
 const Login = () => {
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -15,12 +16,12 @@ const Login = () => {
         setError('');
 
         try {
-            const result = await login(password);
+            const result = await login(username, password);
             if (result.success) {
                 localStorage.setItem('isAuthenticated', 'true');
                 navigate('/admin');
             } else {
-                setError(result.message || 'Invalid Password or Server Error');
+                setError(result.message || 'Invalid Credentials');
             }
         } catch (err) {
             setError('An error occurred. Please try again.');
@@ -37,21 +38,42 @@ const Login = () => {
                         <Lock className="text-primary-600 dark:text-primary-400" size={32} />
                     </div>
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Access</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-2">Enter password to continue</p>
+                    <p className="text-gray-500 dark:text-gray-400 mt-2">Enter credentials to continue</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Username
+                        </label>
+                        <input
+                            type="text"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            className="input-field"
+                            placeholder="admin"
+                            autoFocus
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Password
+                            </label>
+                        </div>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="input-field text-center text-lg tracking-widest"
+                            className="input-field"
                             placeholder="••••••••"
-                            autoFocus
+                            required
                         />
-                        {error && <p className="text-red-500 text-sm mt-2 text-center">{error}</p>}
                     </div>
+
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
                     <button
                         type="submit"
@@ -60,6 +82,15 @@ const Login = () => {
                     >
                         {loading ? 'Verifying...' : 'Login'}
                     </button>
+
+                    <div className="flex justify-between text-sm mt-4">
+                        <a href="/register" className="text-primary-600 hover:text-primary-700 font-medium">
+                            Create Account
+                        </a>
+                        <a href="/forgot-password" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+                            Forgot Password?
+                        </a>
+                    </div>
                 </form>
             </div>
         </div>
