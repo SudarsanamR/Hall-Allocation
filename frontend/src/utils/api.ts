@@ -76,6 +76,10 @@ export const reorderBlocks = async (newOrder: string[]): Promise<void> => {
     await api.post('/halls/reorder_blocks', newOrder);
 };
 
+export const bulkUpdateHalls = async (ids: string[], updates: { rows?: number; columns?: number; }): Promise<void> => {
+    await api.post('/halls/bulk_update', { ids, updates });
+};
+
 export const initializeDefaultHalls = async (): Promise<Hall[]> => {
     const response = await api.post('/halls/initialize');
     return response.data;

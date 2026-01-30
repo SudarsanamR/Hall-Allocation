@@ -109,6 +109,40 @@ def delete_hall(hall_id):
     db.session.commit()
     return jsonify({'message': 'Hall deleted successfully'}), 200
 
+@bp.route('/halls/bulk_update', methods=['POST'])
+def bulk_update_halls():
+    """Bulk update multiple halls"""
+    data = request.json
+    
+    if not data or 'ids' not in data or 'updates' not in data:
+        return jsonify({'error': 'Missing required fields (ids, updates)'}), 400
+    
+    hall_ids = data['ids']
+    updates = data['updates']
+    
+    if not isinstance(hall_ids, list):
+        return jsonify({'error': 'ids must be a list'}), 400
+        
+    updated_count = 0
+    halls_to_update = Hall.query.filter(Hall.id.in_(hall_ids)).all()
+    
+    for hall in halls_to_update:
+        if 'rows' in updates:
+            hall.rows = updates['rows']
+        if 'columns' in updates:
+            hall.columns = updates['columns']
+        
+        # Update capacity
+        hall.capacity = hall.rows * hall.columns
+        updated_count += 1
+    
+    db.session.commit()
+    
+    return jsonify({
+        'message': f'Successfully updated {updated_count} halls',
+        'updated_count': updated_count
+    }), 200
+
 @bp.route('/halls/initialize', methods=['POST'])
 def initialize_default_halls():
     """Initialize default hall configuration (Force Reset)"""
