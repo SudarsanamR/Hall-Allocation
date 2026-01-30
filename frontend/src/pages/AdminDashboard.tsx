@@ -50,14 +50,13 @@ const AdminDashboard = () => {
 
     // Polling for Sync
     useEffect(() => {
-        if (!hasStudents) return;
-
+        // Poll always, to catch when someone else adds data
         const interval = setInterval(() => {
             fetchSessions(true); // silent update
         }, 2000); // Poll every 2 seconds
 
         return () => clearInterval(interval);
-    }, [hasStudents]);
+    }, []);
 
     const fetchSessions = async (silent = false) => {
         if (!silent) setIsLoading(true);
