@@ -21,12 +21,16 @@ const api = axios.create({
 });
 
 // Authentication
-export const login = async (password: string): Promise<boolean> => {
+// Authentication
+export const login = async (password: string): Promise<{ success: boolean; message?: string }> => {
     try {
         const response = await api.post('/login', { password });
-        return response.data.success;
-    } catch {
-        return false;
+        return { success: response.data.success, message: response.data.message };
+    } catch (error: any) {
+        if (error.response && error.response.data) {
+            return { success: false, message: error.response.data.message || 'Invalid password' };
+        }
+        return { success: false, message: 'Server connection failed. Is the backend running?' };
     }
 };
 

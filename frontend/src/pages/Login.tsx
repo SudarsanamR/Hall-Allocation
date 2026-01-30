@@ -15,12 +15,12 @@ const Login = () => {
         setError('');
 
         try {
-            const success = await login(password);
-            if (success) {
+            const result = await login(password);
+            if (result.success) {
                 localStorage.setItem('isAuthenticated', 'true');
                 navigate('/admin');
             } else {
-                setError('Invalid Password or Server Error');
+                setError(result.message || 'Invalid Password or Server Error');
             }
         } catch (err) {
             setError('An error occurred. Please try again.');
