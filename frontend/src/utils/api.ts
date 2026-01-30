@@ -16,9 +16,12 @@ const API_BASE_URL = isTauri
     ? CLOUD_URL
     : (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? CLOUD_URL : LOCAL_URL));
 
+console.log('API_BASE_URL:', API_BASE_URL);
+console.log('Environment:', import.meta.env.MODE);
+
 const api = axios.create({
     baseURL: API_BASE_URL,
-    timeout: 15000, // 15 seconds timeout
+    timeout: 30000, // Increased timeout for Render cold starts
     headers: {
         'Content-Type': 'application/json',
     },
