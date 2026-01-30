@@ -1,7 +1,7 @@
 """
 Flask Application Initialization
 """
-from flask import Flask
+from flask import Flask, request
 from flask_cors import CORS
 
 def create_app():
@@ -44,5 +44,13 @@ def create_app():
     app.register_blueprint(halls.bp)
     app.register_blueprint(seating.bp)
     app.register_blueprint(auth.bp)
+
+    @app.after_request
+    def add_header(response):
+        if request.path.startswith('/api/'):
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+        return response
     
     return app

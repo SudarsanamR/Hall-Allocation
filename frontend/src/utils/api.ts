@@ -54,7 +54,7 @@ export const uploadFile = async (file: File): Promise<UploadFileResponse> => {
 
 // Hall Management
 export const getHalls = async (): Promise<Hall[]> => {
-    const response = await api.get('/halls');
+    const response = await api.get(`/halls?_t=${Date.now()}`);
     return response.data;
 };
 
@@ -88,7 +88,7 @@ export const generateSeating = async (): Promise<{ success: boolean, sessions: s
 };
 
 export const getExistingSessions = async (): Promise<{ success: boolean, sessions: string[] }> => {
-    const response = await api.get('/sessions');
+    const response = await api.get(`/sessions?_t=${Date.now()}`);
     return response.data;
 };
 
@@ -97,7 +97,7 @@ export const clearAllocations = async (): Promise<void> => {
 };
 
 export const getSessionSeating = async (session: string): Promise<SeatingResult> => {
-    const response = await api.get(`/seating/${encodeURIComponent(session)}`);
+    const response = await api.get(`/seating/${encodeURIComponent(session)}?_t=${Date.now()}`);
     return response.data;
 };
 
@@ -133,7 +133,7 @@ export const downloadStudentWiseExcel = async (session?: string): Promise<void> 
 
 // Get current students
 export const getStudents = async (): Promise<Student[]> => {
-    const response = await api.get('/students');
+    const response = await api.get(`/students?_t=${Date.now()}`);
     return response.data;
 };
 
