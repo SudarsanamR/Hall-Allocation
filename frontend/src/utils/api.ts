@@ -59,6 +59,10 @@ export const generateSeating = async (): Promise<{ success: boolean, sessions: s
     return response.data;
 };
 
+export const clearAllocations = async (): Promise<void> => {
+    await api.delete('/clear');
+};
+
 export const getSessionSeating = async (session: string): Promise<SeatingResult> => {
     const response = await api.get(`/seating/${encodeURIComponent(session)}`);
     return response.data;

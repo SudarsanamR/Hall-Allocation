@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, Download, RefreshCw, LayoutGrid } from 'lucide-react';
-import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, downloadStudentWiseExcel, getSessionSeating } from '../utils/api';
+import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, Download, RefreshCw, LayoutGrid, Trash2 } from 'lucide-react';
+import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, downloadStudentWiseExcel, getSessionSeating, clearAllocations } from '../utils/api';
 import type { SeatingResult, UploadFileResponse, Stats } from '../types';
 import SeatingGrid from '../components/seating/SeatingGrid';
 import StatCards from '../components/layout/StatCards';
@@ -143,6 +143,27 @@ const AdminDashboard = () => {
         } catch (err) {
             console.error(err);
             setError('Failed to generate seating allocation.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleClear = async () => {
+        if (!window.confirm("Are you sure you want to clear ALL seating allocations?\n\nThis action cannot be undone. You will need to regenerate seating to get it back.")) {
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            await clearAllocations();
+            // Reset local state
+            setAvailableSessions([]);
+            setSelectedSession('');
+            setCurrentResult(null);
+            // Optional: You could allow re-generating immediately or just leave it empty
+        } catch (err) {
+            console.error(err);
+            setError('Failed to clear allocations.');
         } finally {
             setIsLoading(false);
         }
@@ -418,6 +439,14 @@ const AdminDashboard = () => {
                                 >
                                     <RefreshCw size={16} />
                                     Refresh Allocation
+                                </button>
+                                <button
+                                    onClick={handleClear}
+                                    className="btn-danger flex items-center gap-2 text-sm bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
+                                    title="Delete all current allocations"
+                                >
+                                    <Trash2 size={16} />
+                                    Clear All
                                 </button>
                             </div>
                         )}

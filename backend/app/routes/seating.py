@@ -131,6 +131,20 @@ def generate_seating():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@bp.route('/clear', methods=['DELETE'])
+def clear_allocations():
+    """
+    Clear all seating allocations from the database.
+    This does NOT delete students or halls, only the seating arrangement.
+    """
+    try:
+        Allocation.query.delete()
+        db.session.commit()
+        return jsonify({'message': 'All allocations cleared successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 @bp.route('/seating/<session_key>', methods=['GET'])
 def get_session_seating(session_key):
     """
