@@ -23,6 +23,108 @@ from typing import List, Dict, Tuple, Optional
 from collections import defaultdict
 from app.models import Hall, Student, Seat, HallSeating, StudentAllocation, SeatingResult
 
+# --- CONFIGURATION ---
+DRAWING_SUBJECT_CODES = {
+    "AU3501", "ME3491", "GE3251", 
+    "PR8451", "ME8492", "ME8594", "GE8152", "ME25C01"
+}
+
+DRAWING_HALL_NAMES = {
+    "AH1", "AH2", "AH3", "T6A", "T6B", "AUD1", "AUD2", "AUD3", "AUD4"
+}
+
+PRIORITY_SUBJECT_CODES = {
+    "ME3591", "ME3691", "ME3391", "ME3491", "ME3451", "CME384", "GE3251", "CME385", "MA3251", 
+    "ST25120", "ST25103", "CE3601", "CE3501", "CE3405", "CE3403", "ST4201", "ST4102", 
+    "AU3301", "AU3701", "AU3501", "ST4202", "ST4091", "ME8651", "ME8792", "ME8071", 
+    "ME8493", "ME8693", "ME8492", "ME8391", "ME8593", "MA8452", "ME8594", "GE8152", 
+    "CE8601", "CE8501", "CE8404", "CE8604", "CE8703", "AT8503", "AT8602", "AT8601", "PR8451"
+}
+
+def allocate_session_strict(students: List[Student], halls: List[Hall]) -> SeatingResult:
+    """
+    Wrapper around allocate_seats that enforces strict separation:
+    - Drawing Subjects -> ONLY in Drawing Halls.
+    - Regular Subjects -> ONLY in Regular Halls.
+    """
+    
+    # 1. Split Students
+    drawing_students = []
+    regular_students = []
+    
+    for s in students:
+        # Check if subject code matches (case-insensitive just in case, though usually exact)
+        if s.subjectCode.strip().upper() in DRAWING_SUBJECT_CODES:
+            drawing_students.append(s)
+        else:
+            regular_students.append(s)
+            
+    # 2. Split Halls
+    drawing_halls = []
+    regular_halls = []
+    
+    for h in halls:
+        if h.name.strip() in DRAWING_HALL_NAMES:
+            drawing_halls.append(h)
+        else:
+            regular_halls.append(h)
+            
+    # 3. Allocations
+    # Setup results containers
+    combined_halls = []
+    combined_allocations = []
+    total_students_processed = 0
+    halls_used_count = 0
+    
+    # Helper to merge result
+    def merge_result(res: SeatingResult):
+        if not res: return
+        nonlocal total_students_processed, halls_used_count
+        combined_halls.extend(res.halls)
+        combined_allocations.extend(res.studentAllocation)
+        total_students_processed += res.totalStudents
+        halls_used_count += res.hallsUsed
+
+    # A. Allocate Drawing (Strict)
+    if drawing_students:
+        if not drawing_halls:
+           # Fallback or Error? 
+           # Requirement: "only allocated to [Drawing Halls]"
+           # If no drawing halls, we can't allocate them properly under strict rules.
+           # However, raising error might block entire session. 
+           # Let's try to allocate but it will likely fail if we pass empty list.
+           # Better approach: Try to allocate, if no halls, these students are unallocated (or handled graciously).
+           print(f"WARNING: {len(drawing_students)} drawing students found but no Drawing Halls available!")
+        else:
+            try:
+                res_drawing = allocate_seats(drawing_students, drawing_halls)
+                merge_result(res_drawing)
+            except ValueError as e:
+                print(f"Error allocating drawing students: {e}")
+
+    # B. Allocate Regular
+    if regular_students:
+        if not regular_halls:
+            print(f"WARNING: {len(regular_students)} regular students found but no Regular Halls available!")
+            # OPTIONAL: Allow regular students to spill into Drawing Halls if space permits?
+            # User said: "Drawing subject students should ONLY be allocated to..."
+            # Does not explicitly say "Regular students cannot use Drawing Halls".
+            # Usually we use remaining space.
+            # For now, let's keep them separate as per 'Strict' implied naming.
+        else:
+             try:
+                res_regular = allocate_seats(regular_students, regular_halls)
+                merge_result(res_regular)
+             except ValueError as e:
+                print(f"Error allocating regular students: {e}")
+
+    return SeatingResult(
+        halls=combined_halls,
+        studentAllocation=combined_allocations,
+        totalStudents=total_students_processed,
+        hallsUsed=halls_used_count
+    )
+
 def allocate_seats(students: List[Student], halls: List[Hall]) -> SeatingResult:
     """Main allocation function."""
     if not students:
@@ -34,10 +136,16 @@ def allocate_seats(students: List[Student], halls: List[Hall]) -> SeatingResult:
     # Use valid natural sort for register numbers (try int, fallback to str)
     def natural_key(s: Student):
         reg = s.registerNumber.strip()
-        # Try to convert to int for sorting if purely numeric
+        is_prio = s.subjectCode.strip().upper() in PRIORITY_SUBJECT_CODES
+        # Sort key: (NOT Priority, Department, Subject, RegNo)
+        # False < True. So (True, ...) makes Prio Last if we use (is_prio).
+        # We want Prio First. So use (not is_prio) i.e. False for Prio (0), True for Non-Prio (1).
+        
+        reg_val = reg
         if reg.isdigit():
-            return (s.department, s.subjectCode, int(reg))
-        return (s.department, s.subjectCode, reg)
+            reg_val = int(reg)
+            
+        return (not is_prio, s.department, s.subjectCode, reg_val)
 
     sorted_students = sorted(students, key=natural_key)
 
@@ -194,9 +302,19 @@ def _build_mixing_queue(
     rows = hall.rows
     cols = hall.columns
     
-    # Helper to get keys sorted alphabetically
+    # Helper to get keys sorted dynamically
     def get_sorted_keys():
-        return sorted([k for k, v in groups.items() if v])
+        # Filter active groups
+        active_keys = [k for k in groups if groups[k]]
+        
+        def priority_sort_key(k):
+            # Check if next student is Priority
+            next_student = groups[k][0]
+            is_prio = next_student.subjectCode.strip().upper() in PRIORITY_SUBJECT_CODES
+            # Sort: Priority First (False < True), then Alphabetical Key
+            return (not is_prio, k)
+            
+        return sorted(active_keys, key=priority_sort_key)
 
     # Initialize Active Pair
     keys = get_sorted_keys()

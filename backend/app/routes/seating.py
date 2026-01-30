@@ -3,7 +3,7 @@ Seating Route - Generate seating arrangements and download results
 """
 from flask import Blueprint, request, jsonify, send_file
 from app.models import db, Student, Hall, Allocation, SeatingResult, HallSeating, Seat
-from app.services import allocate_seats, generate_hall_wise_excel, generate_student_wise_excel
+from app.services import allocate_session_strict, generate_hall_wise_excel, generate_student_wise_excel
 from collections import defaultdict
 import uuid
 
@@ -43,7 +43,7 @@ def generate_seating():
         db.session.commit()
         
         for session_key, group_students in session_groups.items():
-            result = allocate_seats(group_students, halls)
+            result = allocate_session_strict(group_students, halls)
             
             # Save to DB
             allocations_to_add = []

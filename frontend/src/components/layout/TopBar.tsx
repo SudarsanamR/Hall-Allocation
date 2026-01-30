@@ -1,4 +1,4 @@
-import { Sun, Moon, Shield, GraduationCap, Menu, X } from 'lucide-react';
+import { Sun, Moon, Shield, GraduationCap, Menu, X, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import gceeLogo from '../../assets/gcee-logo.png';
@@ -9,6 +9,21 @@ const TopBar = () => {
     const location = useLocation();
     const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+    // Auth State
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    useEffect(() => {
+        // Check on mount and route change
+        const checkAuth = () => {
+            setIsAuthenticated(localStorage.getItem('isAuthenticated') === 'true');
+        };
+        checkAuth();
+
+        // Also listen for storage events to sync across tabs
+        window.addEventListener('storage', checkAuth);
+        return () => window.removeEventListener('storage', checkAuth);
+    }, [location.pathname]); // Re-check when location changes (likely after login)
 
     useEffect(() => {
         if (theme === 'dark') {
@@ -21,6 +36,12 @@ const TopBar = () => {
 
     const toggleTheme = () => {
         setTheme(theme === 'dark' ? 'light' : 'dark');
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem('isAuthenticated');
+        setIsAuthenticated(false);
+        navigate('/');
     };
 
     return (
@@ -84,12 +105,23 @@ const TopBar = () => {
 
                     <button
                         onClick={() => navigate('/admin')}
-                        className={`p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors bg-white/50 dark:bg-black/20 backdrop-blur-sm shadow-sm flex items-center gap-2 ${location.pathname === '/admin' ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' : ''}`}
+                        className={`p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors bg-white/50 dark:bg-black/20 backdrop-blur-sm shadow-sm flex items-center gap-2 ${location.pathname.startsWith('/admin') ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' : ''}`}
                         title="Admin Dashboard"
                     >
                         <Shield size={20} />
                         <span className="hidden lg:inline text-sm font-medium">Admin</span>
                     </button>
+
+                    {isAuthenticated && (
+                        <button
+                            onClick={handleLogout}
+                            className="p-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors bg-white/50 dark:bg-black/20 backdrop-blur-sm shadow-sm flex items-center gap-2"
+                            title="Sign Out"
+                        >
+                            <LogOut size={20} />
+                            <span className="hidden lg:inline text-sm font-medium">Logout</span>
+                        </button>
+                    )}
                 </div>
 
                 {/* Theme Toggle - Always Visible */}
@@ -132,6 +164,16 @@ const TopBar = () => {
                         <Shield size={20} />
                         <span className="font-medium">Admin Dashboard</span>
                     </button>
+
+                    {isAuthenticated && (
+                        <button
+                            onClick={() => { handleLogout(); setIsMenuOpen(false); }}
+                            className="p-3 rounded-xl flex items-center gap-3 transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10"
+                        >
+                            <LogOut size={20} />
+                            <span className="font-medium">Logout</span>
+                        </button>
+                    )}
                 </div>
             )}
         </div>
