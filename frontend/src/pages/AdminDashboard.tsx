@@ -442,7 +442,7 @@ const AdminDashboard = () => {
                                 </button>
                                 <button
                                     onClick={handleClear}
-                                    className="btn-danger flex items-center gap-2 text-sm bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
+                                    className="btn-secondary flex items-center gap-2 text-sm !text-red-600 hover:!bg-red-50 dark:!text-red-400 dark:hover:!bg-red-900/50"
                                     title="Delete all current allocations"
                                 >
                                     <Trash2 size={16} />
