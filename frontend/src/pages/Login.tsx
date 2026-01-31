@@ -63,9 +63,10 @@ const Login = () => {
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 className="input-field pl-10"
-                                placeholder="Enter username"
+                                placeholder="Enter Username"
                                 required
                                 autoFocus
+                                autoComplete="username"
                             />
                         </div>
                     </div>
@@ -85,6 +86,7 @@ const Login = () => {
                                 className="input-field pl-10 pr-10"
                                 placeholder="••••••••"
                                 required
+                                autoComplete="current-password"
                             />
                             <button
                                 type="button"

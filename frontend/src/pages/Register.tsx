@@ -86,7 +86,7 @@ const Register = () => {
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 className="input-field pl-10"
-                                placeholder="Choose a username"
+                                placeholder="Choose a Username"
                                 required
                             />
                         </div>
@@ -103,8 +103,9 @@ const Register = () => {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="input-field pl-10"
-                                placeholder="Create a password"
+                                placeholder="Create a Password"
                                 required
+                                autoComplete="new-password"
                             />
                         </div>
                     </div>

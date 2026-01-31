@@ -92,7 +92,7 @@ const ForgotPassword = () => {
                                             value={username}
                                             onChange={(e) => setUsername(e.target.value)}
                                             className="input-field pl-10"
-                                            placeholder="Enter username"
+                                            placeholder="Enter Username"
                                             required
                                             autoFocus
                                         />
@@ -138,6 +138,7 @@ const ForgotPassword = () => {
                                             className="input-field pl-10"
                                             placeholder="Create a new password"
                                             required
+                                            autoComplete="new-password"
                                         />
                                     </div>
                                 </div>
