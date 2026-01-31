@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, current_app
 from app.models.sql import Admin, db
 from werkzeug.security import check_password_hash, generate_password_hash
 from app.services.audit import log_action
@@ -6,11 +6,27 @@ from datetime import datetime
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
+# Input validation constants
+MAX_USERNAME_LENGTH = 80
+MAX_PASSWORD_LENGTH = 128
+MAX_SECURITY_QUESTION_LENGTH = 255
+MAX_SECURITY_ANSWER_LENGTH = 255
+
+def validate_input_length(data, field, max_length):
+    """Validate input field length"""
+    value = data.get(field, '')
+    if value and len(value) > max_length:
+        return False
+    return True
+
 @bp.route('/login', methods=['POST'])
 def login():
+    # Rate limiting applied via decorator or manually
+    limiter = current_app.limiter
+    
     data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
+    username = data.get('username', '')[:MAX_USERNAME_LENGTH]  # Truncate to max
+    password = data.get('password', '')[:MAX_PASSWORD_LENGTH]
 
     if not username or not password:
         return jsonify({'success': False, 'message': 'Missing credentials'}), 400
@@ -41,13 +57,19 @@ def login():
 def register():
     # Only for creating NEW admins (Role: admin)
     data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
-    security_question = data.get('security_question')
-    security_answer = data.get('security_answer')
+    username = data.get('username', '')[:MAX_USERNAME_LENGTH]
+    password = data.get('password', '')[:MAX_PASSWORD_LENGTH]
+    security_question = data.get('security_question', '')[:MAX_SECURITY_QUESTION_LENGTH]
+    security_answer = data.get('security_answer', '')[:MAX_SECURITY_ANSWER_LENGTH]
 
     if not all([username, password, security_question, security_answer]):
          return jsonify({'success': False, 'message': 'All fields are required'}), 400
+
+    # Minimum length validation
+    if len(username) < 3:
+        return jsonify({'success': False, 'message': 'Username must be at least 3 characters'}), 400
+    if len(password) < 6:
+        return jsonify({'success': False, 'message': 'Password must be at least 6 characters'}), 400
 
     if Admin.query.filter_by(username=username).first():
         return jsonify({'success': False, 'message': 'Username already exists'}), 409
@@ -113,9 +135,15 @@ def security_task():
 def reset_password():
     # Step 2 of Forgot Password: Verify Answer & Reset
     data = request.get_json()
-    username = data.get('username')
-    answer = data.get('answer')
-    new_password = data.get('new_password')
+    username = data.get('username', '')[:MAX_USERNAME_LENGTH]
+    answer = data.get('answer', '')[:MAX_SECURITY_ANSWER_LENGTH]
+    new_password = data.get('new_password', '')[:MAX_PASSWORD_LENGTH]
+    
+    if not all([username, answer, new_password]):
+        return jsonify({'success': False, 'message': 'All fields are required'}), 400
+    
+    if len(new_password) < 6:
+        return jsonify({'success': False, 'message': 'Password must be at least 6 characters'}), 400
     
     admin = Admin.query.filter_by(username=username).first()
     if not admin:
