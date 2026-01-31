@@ -37,9 +37,9 @@ const SeatingGrid = ({
             </div>
 
             {/* Screen Indicator */}
-            <div className="flex justify-center mb-8 relative">
-                <div className="w-2/3 h-8 bg-gradient-to-b from-primary-100 to-white dark:from-primary-900/40 dark:to-gray-900 transform -perspective-x-12 rounded-t-[50%] opacity-50 flex items-end justify-center pb-1 border-t-4 border-primary-200 dark:border-primary-700 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.1)]">
-                    <span className="text-xs tracking-[0.3em] font-semibold text-primary-400 dark:text-primary-300">BLACKBOARD / STAGE</span>
+            <div className="flex justify-center mb-8 relative px-2">
+                <div className="w-full md:w-2/3 h-8 md:h-10 bg-gradient-to-b from-primary-100 to-white dark:from-primary-900/40 dark:to-gray-900 transform -perspective-x-12 rounded-t-[50%] opacity-50 flex items-end justify-center pb-1 border-t-4 border-primary-200 dark:border-primary-700 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.1)]">
+                    <span className="text-[10px] md:text-xs tracking-[0.1em] md:tracking-[0.3em] font-semibold text-primary-400 dark:text-primary-300 whitespace-nowrap">BLACKBOARD / STAGE</span>
                 </div>
             </div>
 
