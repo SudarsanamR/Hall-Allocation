@@ -36,7 +36,7 @@ const HallManagement = () => {
         try {
             const newHall = await createHall({
                 ...hallData,
-                capacity: hallData.rows * hallData.columns,
+                capacity: hallData.capacity ?? (hallData.rows * hallData.columns)
             });
             setHalls(prev => [...prev, newHall]);
             setShowForm(false);
@@ -52,7 +52,7 @@ const HallManagement = () => {
         try {
             const updated = await updateHall(editingHall.id, {
                 ...hallData,
-                capacity: hallData.rows * hallData.columns,
+                capacity: hallData.capacity ?? (hallData.rows * hallData.columns)
             });
             setHalls(prev => prev.map(h => h.id === updated.id ? updated : h));
             setEditingHall(null);
@@ -183,6 +183,7 @@ const HallManagement = () => {
                     onEdit={handleEdit}
                     onDelete={handleDeleteHall}
                     onAdd={() => setShowForm(true)}
+                    onRefresh={fetchHalls}
                 />
             )}
         </div>

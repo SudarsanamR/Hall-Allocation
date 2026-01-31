@@ -1,6 +1,7 @@
-import { Sun, Moon, Shield, GraduationCap, Menu, X, LogOut } from 'lucide-react';
+import { Sun, Moon, Shield, GraduationCap, Menu, X, LogOut as LogOutIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { logout } from '../../utils/api';
 import gceeLogo from '../../assets/gcee-logo.png';
 import annaUnivLogo from '../../assets/anna-univ-logo.png';
 
@@ -38,10 +39,17 @@ const TopBar = () => {
         setTheme(theme === 'dark' ? 'light' : 'dark');
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await logout();
+        } catch (error) {
+            console.error("Logout failed on backend:", error);
+        }
         localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('userRole'); // Clear role as well
+        localStorage.removeItem('username');
         setIsAuthenticated(false);
-        navigate('/');
+        navigate('/login');
     };
 
     return (
@@ -68,12 +76,21 @@ const TopBar = () => {
                     </button>
 
                     <button
-                        onClick={() => navigate('/admin')}
-                        className={`p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors bg-white/50 dark:bg-black/20 backdrop-blur-sm shadow-sm flex items-center gap-2 ${location.pathname.startsWith('/admin') ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' : ''}`}
+                        onClick={() => {
+                            if (isAuthenticated) {
+                                const role = localStorage.getItem('userRole');
+                                navigate(role === 'super_admin' ? '/super-admin' : '/admin');
+                            } else {
+                                navigate('/login');
+                            }
+                        }}
+                        className={`p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors bg-white/50 dark:bg-black/20 backdrop-blur-sm shadow-sm flex items-center gap-2 ${location.pathname.startsWith('/admin') || location.pathname.startsWith('/super-admin') ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' : ''}`}
                         title="Admin Dashboard"
                     >
                         <Shield size={20} />
-                        <span className="hidden xl:inline text-sm font-medium">Admin</span>
+                        <span className="hidden xl:inline text-sm font-medium">
+                            {isAuthenticated ? 'Dashboard' : 'Admin'}
+                        </span>
                     </button>
                 </div>
 
@@ -90,7 +107,7 @@ const TopBar = () => {
 
             {/* Center: Title */}
             <div
-                className="hidden lg:flex flex-col items-center text-center cursor-pointer group justify-self-center mx-4"
+                className="hidden xl:flex flex-col items-center text-center cursor-pointer group justify-self-center mx-4"
                 onClick={() => navigate('/')}
             >
                 <h1 className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 uppercase tracking-wide leading-tight px-2 group-hover:scale-[1.02] transition-transform">
@@ -101,13 +118,13 @@ const TopBar = () => {
                 </h2>
             </div>
 
-            {/* Center Mobile: Title */}
+            {/* Center Mobile: Title - stays within grid column, no absolute */}
             <div
-                className="lg:hidden absolute left-1/2 -translate-x-1/2 flex flex-col items-center text-center cursor-pointer w-max"
+                className="xl:hidden flex flex-col items-center text-center cursor-pointer justify-self-center overflow-hidden"
                 onClick={() => navigate('/')}
             >
-                <h1 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">GCE Erode</h1>
-                <h2 className="text-[10px] sm:text-xs text-primary-600 dark:text-primary-400 whitespace-nowrap">Exam Hall Allocator</h2>
+                <h1 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 dark:text-white leading-tight truncate max-w-[120px] sm:max-w-[180px] md:max-w-[220px]">GCE Erode</h1>
+                <h2 className="text-[9px] sm:text-[10px] text-primary-600 dark:text-primary-400 truncate max-w-[120px] sm:max-w-[180px] md:max-w-[220px]">Exam Hall Allocator</h2>
             </div>
 
             {/* Right: GCEE Logo + Controls */}
@@ -121,7 +138,7 @@ const TopBar = () => {
                             className="p-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors bg-white/50 dark:bg-black/20 backdrop-blur-sm shadow-sm flex items-center gap-2"
                             title="Sign Out"
                         >
-                            <LogOut size={20} />
+                            <LogOutIcon size={20} />
                             <span className="hidden xl:inline text-sm font-medium">Logout</span>
                         </button>
                     )}
@@ -173,7 +190,7 @@ const TopBar = () => {
                             onClick={() => { handleLogout(); setIsMenuOpen(false); }}
                             className="p-3 rounded-xl flex items-center gap-3 transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10"
                         >
-                            <LogOut size={20} />
+                            <LogOutIcon size={20} />
                             <span className="font-medium">Logout</span>
                         </button>
                     )}

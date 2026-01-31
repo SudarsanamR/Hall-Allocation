@@ -1,9 +1,10 @@
 """
 Upload Route - Handle file uploads and student data parsing
 """
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, session
 import os
 from werkzeug.utils import secure_filename
+from app.services.audit import log_action
 from app.models import db, Student
 from app.services import parse_file, validate_student_data
 
@@ -17,10 +18,16 @@ def allowed_file(filename):
 @bp.route('/upload', methods=['POST'])
 def upload_file():
     """Upload and parse Excel/CSV file with student data"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+        
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
     
     file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
     
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
@@ -62,6 +69,8 @@ def upload_file():
         # Clean up file
         os.remove(file_path)
         
+        log_action(session['user_id'], 'UPLOAD_DATA', f'Uploaded {len(students)} students from {filename}')
+        
         response = {
             'success': True,
             'message': f'Successfully uploaded {len(students)} students',
@@ -100,8 +109,14 @@ def get_students():
 @bp.route('/reset', methods=['DELETE'])
 def reset_data():
     """Reset all student data and seating results"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+        
     Student.query.delete()
     from app.models import Allocation
     Allocation.query.delete()
     db.session.commit()
+    
+    log_action(session['user_id'], 'RESET_DATA', 'Cleared all student and allocation data')
+    
     return jsonify({'success': True, 'message': 'All data has been reset'}), 200

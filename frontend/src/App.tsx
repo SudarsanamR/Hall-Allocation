@@ -3,7 +3,10 @@ import TopBar from './components/layout/TopBar';
 import AdminDashboard from './pages/AdminDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import HallManagement from './pages/HallManagement';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import Login from './pages/Login';
+import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -17,10 +20,13 @@ function App() {
             <Routes>
               <Route path="/" element={<StudentDashboard />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+
               <Route
                 path="/admin"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
                     <AdminDashboard />
                   </ProtectedRoute>
                 }
@@ -28,8 +34,17 @@ function App() {
               <Route
                 path="/halls"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
                     <HallManagement />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/super-admin"
+                element={
+                  <ProtectedRoute allowedRoles={['super_admin']}>
+                    <SuperAdminDashboard />
                   </ProtectedRoute>
                 }
               />

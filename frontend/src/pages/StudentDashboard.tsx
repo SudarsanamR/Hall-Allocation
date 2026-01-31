@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Search, MapPin, Armchair, ChevronRight } from 'lucide-react';
 import { searchStudent } from '../utils/api';
 import SeatingGrid from '../components/seating/SeatingGrid';
+import GradientText from '../components/ui/GradientText';
 
 const StudentDashboard = () => {
     const [registerNumber, setRegisterNumber] = useState('');
@@ -40,9 +41,17 @@ const StudentDashboard = () => {
 
                 {/* Header */}
                 <div className="text-center space-y-4">
-                    <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-indigo-600 dark:from-primary-400 dark:to-indigo-400">
-                        Check Your Seat
-                    </h1>
+                    <div className="flex justify-center">
+                        <GradientText
+                            colors={["#42c6aa", "#5eaccd", "#7399e7", "#42c6aa", "#5eaccd", "#7399e7"]} // Repeating colors for smooth loop since yoyo is false
+                            animationSpeed={4}
+                            showBorder={false}
+                            className="text-4xl md:text-5xl font-bold px-4 py-2"
+                            yoyo={false}
+                        >
+                            Check Your Seat
+                        </GradientText>
+                    </div>
                     <p className="text-gray-600 dark:text-gray-400 text-lg">
                         Enter your register number to find your exam hall.
                     </p>
@@ -165,7 +174,7 @@ const StudentDashboard = () => {
                                                 Seating Arrangement
                                             </h4>
                                             {/* Adjusted Grid for Mobile/Desktop */}
-                                            <div className="bg-gray-50 dark:bg-gray-950/50 p-2 md:p-4 rounded-2xl overflow-hidden">
+                                            <div className="bg-gray-50 dark:bg-gray-950/50 p-2 md:p-4 rounded-2xl overflow-x-auto">
                                                 <SeatingGrid
                                                     hallSeating={alloc.hallSeating}
                                                     colorMap={colorMap}

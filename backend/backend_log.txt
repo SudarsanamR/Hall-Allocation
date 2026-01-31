@@ -1,0 +1,14 @@
+DEBUG: Bulk update for IDs: ['ea7bbaff-0b04-4da8-a4cb-cd42fb9bea09', '008cb948-7509-430a-9d7a-bac6635b0d8f', 'd067f27e-24a2-46ce-91c7-adf5abac0b95', 'a542ac65-149d-4797-a260-1df893361772'] with capacity: 27
+DEBUG: Updated 4 halls
+DEBUG: Bulk update for IDs: ['ea7bbaff-0b04-4da8-a4cb-cd42fb9bea09', '008cb948-7509-430a-9d7a-bac6635b0d8f', 'd067f27e-24a2-46ce-91c7-adf5abac0b95', 'a542ac65-149d-4797-a260-1df893361772'] with capacity: 27
+DEBUG: Updated 4 halls
+DEBUG: Bulk update for IDs: ['ea7bbaff-0b04-4da8-a4cb-cd42fb9bea09', '008cb948-7509-430a-9d7a-bac6635b0d8f', 'd067f27e-24a2-46ce-91c7-adf5abac0b95', 'a542ac65-149d-4797-a260-1df893361772'] with capacity: 25
+DEBUG: Updated 4 halls
+DEBUG: Bulk update for IDs: ['ea7bbaff-0b04-4da8-a4cb-cd42fb9bea09'] with capacity: 25
+DEBUG: Updated 1 halls
+DEBUG: Bulk update for IDs: ['ea7bbaff-0b04-4da8-a4cb-cd42fb9bea09', '008cb948-7509-430a-9d7a-bac6635b0d8f', 'd067f27e-24a2-46ce-91c7-adf5abac0b95', 'a542ac65-149d-4797-a260-1df893361772'] with capacity: 27
+DEBUG: Updated 4 halls
+DEBUG: Bulk update for IDs: ['ea7bbaff-0b04-4da8-a4cb-cd42fb9bea09', '008cb948-7509-430a-9d7a-bac6635b0d8f', 'd067f27e-24a2-46ce-91c7-adf5abac0b95', 'a542ac65-149d-4797-a260-1df893361772'] with capacity: 25
+DEBUG: Updated 4 halls
+DEBUG: Bulk update for IDs: ['ea7bbaff-0b04-4da8-a4cb-cd42fb9bea09', '008cb948-7509-430a-9d7a-bac6635b0d8f', 'd067f27e-24a2-46ce-91c7-adf5abac0b95', 'a542ac65-149d-4797-a260-1df893361772'] with capacity: 25
+DEBUG: Updated 4 halls

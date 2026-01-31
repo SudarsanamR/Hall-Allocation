@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, Download, RefreshCw, LayoutGrid, Trash2 } from 'lucide-react';
-import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, downloadStudentWiseExcel, getSessionSeating, clearAllocations } from '../utils/api';
+import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, downloadStudentWiseExcel, getSessionSeating, clearAllocations, getSessions } from '../utils/api';
 import type { SeatingResult, UploadFileResponse, Stats } from '../types';
 import SeatingGrid from '../components/seating/SeatingGrid';
 import StatCards from '../components/layout/StatCards';
@@ -36,11 +36,8 @@ const AdminDashboard = () => {
             setBackendError(false);
             if (students.length > 0) {
                 setHasStudents(true);
-                // We don't auto-generate full results anymore to save bandwidth, 
-                // but we could try to fetch available sessions if we had an endpoint for it.
-                // For now, let's just rely on the user clicking "Refresh" or explicit generate.
-                // Or better: try to auto-trigger generate to get session list
-                handleGenerate();
+                // Instead of auto-generating, just check for existing sessions
+                loadExistingSessions();
             } else {
                 setHasStudents(false);
             }
@@ -48,6 +45,46 @@ const AdminDashboard = () => {
             console.error("Backend check failed:", err);
             setHasStudents(false);
             setBackendError(true);
+        }
+    };
+
+    const loadExistingSessions = async () => {
+        try {
+            const res = await getSessions();
+            if (res.success && res.sessions.length > 0) {
+                updateSessionList(res.sessions);
+            }
+        } catch (err) {
+            console.error("Failed to load existing sessions", err);
+        }
+    };
+
+    // Helper to process session list
+    const updateSessionList = (sessions: string[]) => {
+        // Sort sessions: FN before AN (within same date)
+        const sortedSessions = [...sessions].sort((a, b) => {
+            // Extract date and session type
+            const aIsFN = a.includes('FN');
+            const bIsFN = b.includes('FN');
+            // If same session type, sort alphabetically (by date)
+            if (aIsFN === bIsFN) return a.localeCompare(b);
+            // FN comes before AN
+            return aIsFN ? -1 : 1;
+        });
+
+        setAvailableSessions(sortedSessions);
+
+        // Default to first session if none selected or current invalid
+        if (sortedSessions.length > 0) {
+            if (!sortedSessions.includes(selectedSession)) {
+                setSelectedSession(sortedSessions[0]);
+            } else {
+                // Force re-fetch for current session
+                fetchSessionDetails(selectedSession);
+            }
+        } else {
+            setSelectedSession('');
+            setCurrentResult(null);
         }
     };
 
@@ -114,32 +151,7 @@ const AdminDashboard = () => {
         setError(null);
         try {
             const res = await generateSeating();
-            // Sort sessions: FN before AN (within same date)
-            const sortedSessions = [...res.sessions].sort((a, b) => {
-                // Extract date and session type
-                const aIsFN = a.includes('FN');
-                const bIsFN = b.includes('FN');
-                // If same session type, sort alphabetically (by date)
-                if (aIsFN === bIsFN) return a.localeCompare(b);
-                // FN comes before AN
-                return aIsFN ? -1 : 1;
-            });
-
-            setAvailableSessions(sortedSessions);
-
-            // Default to first session if none selected or current invalid
-            if (sortedSessions.length > 0) {
-                if (!sortedSessions.includes(selectedSession)) {
-                    setSelectedSession(sortedSessions[0]);
-                } else {
-                    // Force re-fetch for current session
-                    fetchSessionDetails(selectedSession);
-                }
-            } else {
-                setSelectedSession('');
-                setCurrentResult(null);
-            }
-
+            updateSessionList(res.sessions);
         } catch (err) {
             console.error(err);
             setError('Failed to generate seating allocation.');
