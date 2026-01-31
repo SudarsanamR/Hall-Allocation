@@ -39,11 +39,13 @@ def create_app():
         bootstrap_halls()
 
     # Register blueprints
-    from app.routes import upload, halls, seating, auth
+    # Register blueprints
+    from app.routes import upload, halls, seating, auth, students
     app.register_blueprint(upload.bp)
     app.register_blueprint(halls.bp)
     app.register_blueprint(seating.bp)
     app.register_blueprint(auth.bp)
+    app.register_blueprint(students.bp)
 
     @app.after_request
     def add_header(response):

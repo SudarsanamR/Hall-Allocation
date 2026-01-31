@@ -11,8 +11,8 @@ bp = Blueprint('halls', __name__, url_prefix='/api')
 # Default halls configuration
 DEFAULT_HALLS = [
     # Maths / 1st Year Block
-    {'name': 'I1', 'block': 'Maths / 1st Year Block', 'rows': 5, 'columns': 5},
-    {'name': 'I2', 'block': 'Maths / 1st Year Block', 'rows': 5, 'columns': 5},
+    {'name': 'I1', 'block': 'Maths / 1st Year Block', 'rows': 5, 'columns': 5, 'is_ground_floor': True},
+    {'name': 'I2', 'block': 'Maths / 1st Year Block', 'rows': 5, 'columns': 5, 'is_ground_floor': True},
     {'name': 'I5', 'block': 'Maths / 1st Year Block', 'rows': 5, 'columns': 5},
     {'name': 'I6', 'block': 'Maths / 1st Year Block', 'rows': 5, 'columns': 5},
     {'name': 'I7', 'block': 'Maths / 1st Year Block', 'rows': 5, 'columns': 5},
@@ -67,7 +67,8 @@ def create_hall():
         block=data['block'],
         rows=data['rows'],
         columns=data['columns'],
-        capacity=data['rows'] * data['columns']
+        capacity=data['rows'] * data['columns'],
+        is_ground_floor=data.get('isGroundFloor', False)
     )
     
     db.session.add(hall)
@@ -92,6 +93,8 @@ def update_hall(hall_id):
         hall.rows = data['rows']
     if 'columns' in data:
         hall.columns = data['columns']
+    if 'isGroundFloor' in data:
+        hall.is_ground_floor = data['isGroundFloor']
     
     hall.capacity = hall.rows * hall.columns
     db.session.commit()
@@ -131,6 +134,8 @@ def bulk_update_halls():
             hall.rows = updates['rows']
         if 'columns' in updates:
             hall.columns = updates['columns']
+        if 'isGroundFloor' in updates:
+            hall.is_ground_floor = updates['isGroundFloor']
         
         # Update capacity
         hall.capacity = hall.rows * hall.columns
@@ -178,7 +183,8 @@ def bootstrap_halls(force=False):
             block=hall_data['block'],
             rows=hall_data['rows'],
             columns=hall_data['columns'],
-            capacity=hall_data['rows'] * hall_data['columns']
+            capacity=hall_data['rows'] * hall_data['columns'],
+            is_ground_floor=hall_data.get('is_ground_floor', False)
         )
         halls_to_add.append(hall)
     

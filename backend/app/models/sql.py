@@ -8,6 +8,7 @@ class Hall(db.Model):
     rows = db.Column(db.Integer, nullable=False)
     columns = db.Column(db.Integer, nullable=False)
     capacity = db.Column(db.Integer, nullable=False)
+    is_ground_floor = db.Column(db.Boolean, default=False)
 
     def to_dict(self):
         return {
@@ -16,7 +17,8 @@ class Hall(db.Model):
             'block': self.block,
             'rows': self.rows,
             'columns': self.columns,
-            'capacity': self.capacity
+            'capacity': self.capacity,
+            'isGroundFloor': self.is_ground_floor
         }
 
 class Student(db.Model):
@@ -26,6 +28,7 @@ class Student(db.Model):
     department = db.Column(db.String(50), nullable=False)
     exam_date = db.Column(db.String(20), nullable=False)
     session = db.Column(db.String(10), nullable=False)
+    is_physically_challenged = db.Column(db.Boolean, default=False)
     
     # Optional: Original file source or timestamp if needed
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

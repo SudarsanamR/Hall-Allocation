@@ -70,6 +70,17 @@ def allocate_session_strict(students: List[Student], halls: List[Hall]) -> Seati
             regular_halls.append(h)
             
     # 3. Allocations
+    # Sort Halls: Ground Floor First
+    # Assuming 'is_ground_floor' attribute exists (added to Model)
+    # We sort strictly: True < False is wrong? Sort key True(1) vs False(0). Reverse=True puts True first.
+    # Or key=lambda x: not x.is_ground_floor (False < True) -> Ground Floor First
+    
+    def hall_sort_key(h):
+        return (not getattr(h, 'is_ground_floor', False), h.name)
+
+    drawing_halls.sort(key=hall_sort_key)
+    regular_halls.sort(key=hall_sort_key)
+
     # Setup results containers
     combined_halls = []
     combined_allocations = []
@@ -137,15 +148,17 @@ def allocate_seats(students: List[Student], halls: List[Hall]) -> SeatingResult:
     def natural_key(s: Student):
         reg = s.registerNumber.strip()
         is_prio = s.subjectCode.strip().upper() in PRIORITY_SUBJECT_CODES
-        # Sort key: (NOT Priority, Department, Subject, RegNo)
-        # False < True. So (True, ...) makes Prio Last if we use (is_prio).
-        # We want Prio First. So use (not is_prio) i.e. False for Prio (0), True for Non-Prio (1).
+        is_physically_challenged = getattr(s, 'is_physically_challenged', False)
+        
+        # Sort key: (NOT Physically Challenged, NOT Priority, Department, Subject, RegNo)
+        # 1. Physical Challenge: True (First) -> Not True = False (0).
+        # 2. Priority: True (First) -> Not True = False (0).
         
         reg_val = reg
         if reg.isdigit():
             reg_val = int(reg)
             
-        return (not is_prio, s.department, s.subjectCode, reg_val)
+        return (not is_physically_challenged, not is_prio, s.department, s.subjectCode, reg_val)
 
     sorted_students = sorted(students, key=natural_key)
 
@@ -311,8 +324,13 @@ def _build_mixing_queue(
             # Check if next student is Priority
             next_student = groups[k][0]
             is_prio = next_student.subjectCode.strip().upper() in PRIORITY_SUBJECT_CODES
-            # Sort: Priority First (False < True), then Alphabetical Key
-            return (not is_prio, k)
+            is_physically_challenged = getattr(next_student, 'is_physically_challenged', False)
+            
+            # Sort: 
+            # 1. Physically Challenged (False < True) -> Use (not is_ph)
+            # 2. Priority Subject (False < True) -> Use (not is_prio)
+            # 3. Alphabetical Key
+            return (not is_physically_challenged, not is_prio, k)
             
         return sorted(active_keys, key=priority_sort_key)
 

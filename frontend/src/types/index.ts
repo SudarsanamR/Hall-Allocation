@@ -6,6 +6,7 @@ export interface Hall {
     rows: number;
     columns: number;
     capacity: number;
+    isGroundFloor?: boolean;
 }
 
 // Student Data
@@ -15,6 +16,7 @@ export interface Student {
     department: string;
     examDate: string;
     session: 'FN' | 'AN';
+    isPhysicallyChallenged?: boolean;
 }
 
 // Seat in Grid

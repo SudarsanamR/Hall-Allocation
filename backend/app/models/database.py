@@ -13,6 +13,7 @@ class Hall:
     rows: int
     columns: int
     capacity: int
+    is_ground_floor: bool = False
 
 @dataclass
 class Student:
@@ -21,6 +22,7 @@ class Student:
     department: str
     examDate: str
     session: str  # 'FN' or 'AN'
+    is_physically_challenged: bool = False
 
 @dataclass
 class Seat:

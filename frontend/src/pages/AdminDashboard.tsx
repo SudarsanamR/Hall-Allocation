@@ -5,6 +5,7 @@ import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, downlo
 import type { SeatingResult, UploadFileResponse, Stats } from '../types';
 import SeatingGrid from '../components/seating/SeatingGrid';
 import StatCards from '../components/layout/StatCards';
+import StudentPriorityManager from '../components/admin/StudentPriorityManager';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -456,6 +457,11 @@ const AdminDashboard = () => {
                     )}
                 </div>
             </section>
+
+            {/* 1.5 Special Allocation Management */}
+            <div className="max-w-3xl mx-auto">
+                <StudentPriorityManager />
+            </div>
 
             {/* 2. Results Section (Only if we have data) */}
             {(hasStudents || isLoading) && (

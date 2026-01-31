@@ -180,3 +180,14 @@ export const searchStudent = async (registerNumber: string): Promise<any> => {
     const response = await api.post('/search', { registerNumber });
     return response.data;
 };
+
+// Student Details Manager
+export const searchStudentDetails = async (registerNumber: string): Promise<Student> => {
+    const response = await api.post('/students/search', { registerNumber });
+    return response.data;
+};
+
+export const toggleStudentDisability = async (registerNumber: string, status: boolean): Promise<any> => {
+    const response = await api.put(`/students/${registerNumber}/toggle-disability`, { isPhysicallyChallenged: status });
+    return response.data;
+};
