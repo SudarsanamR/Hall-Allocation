@@ -437,28 +437,28 @@ const AdminDashboard = () => {
                         </div>
 
                         {!isLoading && (
-                            <div className="flex gap-3">
+                            <div className="flex flex-wrap gap-2 sm:gap-3">
                                 <button
                                     onClick={() => navigate('/halls')}
-                                    className="btn-secondary flex items-center gap-2 text-sm bg-white dark:bg-gray-800"
+                                    className="btn-secondary flex items-center gap-2 text-sm bg-white dark:bg-gray-800 flex-1 sm:flex-none justify-center"
                                 >
                                     <LayoutGrid size={16} />
-                                    Manage Halls
+                                    <span className="whitespace-nowrap">Manage Halls</span>
                                 </button>
                                 <button
                                     onClick={handleGenerate}
-                                    className="btn-secondary flex items-center gap-2 text-sm"
+                                    className="btn-secondary flex items-center gap-2 text-sm flex-1 sm:flex-none justify-center"
                                 >
                                     <RefreshCw size={16} />
-                                    Refresh Allocation
+                                    <span className="whitespace-nowrap">Refresh Allocation</span>
                                 </button>
                                 <button
                                     onClick={handleClear}
-                                    className="btn-secondary flex items-center gap-2 text-sm !text-red-600 hover:!bg-red-50 dark:!text-red-400 dark:hover:!bg-red-900/50"
+                                    className="btn-secondary flex items-center gap-2 text-sm !text-red-600 hover:!bg-red-50 dark:!text-red-400 dark:hover:!bg-red-900/50 flex-1 sm:flex-none justify-center"
                                     title="Delete all current allocations"
                                 >
                                     <Trash2 size={16} />
-                                    Clear All
+                                    <span className="whitespace-nowrap">Clear All</span>
                                 </button>
                             </div>
                         )}

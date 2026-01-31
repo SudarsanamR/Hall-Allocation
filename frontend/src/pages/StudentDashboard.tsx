@@ -179,6 +179,7 @@ const StudentDashboard = () => {
                                                     hallSeating={alloc.hallSeating}
                                                     colorMap={colorMap}
                                                     highlightStudentId={registerNumber}
+                                                    compact={true}
                                                 />
                                             </div>
 

@@ -8,6 +8,7 @@ interface SeatingGridProps {
     highlightStudentId?: string;
     selectedDepts?: string[];
     selectedSubjects?: string[];
+    compact?: boolean; // If true, fit all columns on mobile without scrolling
 }
 
 const SeatingGrid = ({
@@ -15,9 +16,10 @@ const SeatingGrid = ({
     colorMap,
     highlightStudentId,
     selectedDepts,
-    selectedSubjects
+    selectedSubjects,
+    compact = false
 }: SeatingGridProps) => {
-    const { hall, grid, studentsCount } = hallSeating;
+    const { hall, grid } = hallSeating;
 
     return (
         <div className="card overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-lg">
@@ -30,9 +32,6 @@ const SeatingGrid = ({
                             {hall.block}
                         </span>
                     </h3>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                        Occupancy: <span className="font-medium text-gray-900 dark:text-white">{studentsCount}</span> / {hall.capacity}
-                    </p>
                 </div>
             </div>
 
@@ -46,9 +45,15 @@ const SeatingGrid = ({
             {/* Seating Layout */}
             <div className="overflow-x-auto pb-4 custom-scrollbar flex justify-center">
                 <div
-                    className="grid gap-x-3 gap-y-4 min-w-min p-4 md:p-8"
+                    className={compact
+                        ? "grid gap-x-1 md:gap-x-3 gap-y-2 md:gap-y-4 min-w-0 w-full p-2 md:p-8"
+                        : "grid gap-x-3 gap-y-4 min-w-min p-4 md:p-8"
+                    }
                     style={{
-                        gridTemplateColumns: `repeat(${hall.columns}, minmax(40px, 1fr))`,
+                        gridTemplateColumns: compact
+                            ? `repeat(${hall.columns}, minmax(0, 1fr))`
+                            : `repeat(${hall.columns}, minmax(40px, 1fr))`,
+                        ...(compact ? { maxWidth: '100%' } : {}),
                     }}
                 >
                     {grid.map((row, rowIndex) =>

@@ -4,6 +4,8 @@ from io import BytesIO
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.page import PageMargins
+from openpyxl.worksheet.pagebreak import Break
 from app.models import SeatingResult, HallSeating
 from collections import defaultdict
 
@@ -104,10 +106,6 @@ def generate_hall_wise_excel(seating_result: SeatingResult) -> BytesIO:
         ws_aud = wb.create_sheet("aud seating")
         _write_auditorium_sheet(ws_aud, auditorium_halls, exam_date, session)
     
-    # === SHEET 5: Sheet1 (Planning grid) ===
-    ws_plan = wb.create_sheet("Sheet1")
-    _write_planning_sheet(ws_plan, dept_data, seating_result.halls)
-    
     wb.save(output)
     output.seek(0)
     return output
@@ -118,7 +116,17 @@ def _write_seating_sheet(ws, halls, exam_date, session):
     current_row = 1
     row_numerals = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
     
-    for hall_seating in halls:
+    # Configure A4 page settings and margins
+    ws.page_setup.paperSize = ws.PAPERSIZE_A4
+    ws.page_setup.orientation = 'portrait'
+    ws.page_setup.fitToPage = True
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0  # 0 means auto
+    ws.page_margins = PageMargins(left=0.5, right=0.5, top=0.5, bottom=0.5, header=0.3, footer=0.3)
+    
+    hall_start_row = current_row
+    
+    for idx, hall_seating in enumerate(halls):
         hall = hall_seating.hall
         grid = hall_seating.grid
         num_cols = hall.columns
@@ -185,8 +193,7 @@ def _write_seating_sheet(ws, halls, exam_date, session):
             students_sorted = sorted(students)
             range_text = students_sorted[0] if len(students_sorted) == 1 else f"{students_sorted[0]} TO {students_sorted[-1]}"
             
-            dept_display = f"7 {dept}" if not dept.startswith("7") else dept
-            ws.cell(row=current_row, column=1, value=dept_display).font = DATA_FONT
+            ws.cell(row=current_row, column=1, value=dept).font = DATA_FONT
             ws.merge_cells(start_row=current_row, start_column=2, end_row=current_row, end_column=9)
             range_cell = ws.cell(row=current_row, column=2, value=range_text)
             range_cell.font = DATA_FONT
@@ -197,7 +204,20 @@ def _write_seating_sheet(ws, halls, exam_date, session):
         # TOTAL row
         ws.cell(row=current_row, column=excel_data_cols - 1, value="TOTAL").font = HEADER_FONT
         ws.cell(row=current_row, column=excel_data_cols, value=hall_seating.studentsCount).font = HEADER_FONT
-        current_row += 2
+        current_row += 1
+        # Add page break after every 4 halls (except the last set)
+        is_page_break = (idx + 1) % 4 == 0 and idx < len(halls) - 1
+        is_last_hall = idx == len(halls) - 1
+        
+        # Add separator line (thick border) between halls - but NOT before page breaks or after last hall
+        if not is_page_break and not is_last_hall:
+            separator_border = Border(bottom=Side(style='medium'))
+            for col in range(1, excel_data_cols + 1):
+                ws.cell(row=current_row, column=col).border = separator_border
+            current_row += 2  # Leave a blank row after the separator line
+        
+        if is_page_break:
+            ws.row_breaks.append(Break(id=current_row - 1))
 
 
 def _write_hall_allo_sheet(ws, hall_data, date_str, session):
@@ -289,17 +309,24 @@ def _write_nb_sheet(ws, dept_data, date_str, session):
         total = len(students)
         
         # Department header
-        dept_display = f"7 {dept}" if not dept.startswith("7") else dept
-        ws.cell(row=current_row, column=1, value=f"DEPARTMENT / SEMESTER  :    {dept_display}").font = HEADER_FONT
+        ws.cell(row=current_row, column=1, value=f"DEPARTMENT / SEMESTER  :    {dept}").font = HEADER_FONT
         ws.cell(row=current_row, column=2, value="TOTAL :").font = HEADER_FONT
         ws.cell(row=current_row, column=3, value=total).font = HEADER_FONT
         current_row += 1
         
-        ws.cell(row=current_row, column=1, value="REGISTER NUMBERS").font = HEADER_FONT
-        ws.cell(row=current_row, column=3, value="HALL").font = HEADER_FONT
+        # Table header row with borders
+        header_reg = ws.cell(row=current_row, column=1, value="REGISTER NUMBERS")
+        header_reg.font = HEADER_FONT
+        header_reg.border = FULL_BORDER
+        header_count = ws.cell(row=current_row, column=2, value="COUNT")
+        header_count.font = HEADER_FONT
+        header_count.border = FULL_BORDER
+        header_hall = ws.cell(row=current_row, column=3, value="HALL")
+        header_hall.font = HEADER_FONT
+        header_hall.border = FULL_BORDER
         current_row += 1
         
-        # Hall-wise register numbers
+        # Hall-wise register numbers with borders
         for hall_name, hall_students in sorted(data['halls'].items()):
             hall_students_sorted = sorted(hall_students)
             count = len(hall_students_sorted)
@@ -311,9 +338,15 @@ def _write_nb_sheet(ws, dept_data, date_str, session):
             else:
                 range_text = f"{hall_students_sorted[0]} TO {hall_students_sorted[-1]}"
             
-            ws.cell(row=current_row, column=1, value=range_text).font = DATA_FONT
-            ws.cell(row=current_row, column=2, value=count).font = DATA_FONT
-            ws.cell(row=current_row, column=3, value=hall_name).font = DATA_FONT
+            reg_cell = ws.cell(row=current_row, column=1, value=range_text)
+            reg_cell.font = DATA_FONT
+            reg_cell.border = FULL_BORDER
+            count_cell = ws.cell(row=current_row, column=2, value=count)
+            count_cell.font = DATA_FONT
+            count_cell.border = FULL_BORDER
+            hall_cell = ws.cell(row=current_row, column=3, value=hall_name)
+            hall_cell.font = DATA_FONT
+            hall_cell.border = FULL_BORDER
             current_row += 1
         
         current_row += 1  # Empty row between departments
@@ -425,8 +458,7 @@ def _write_auditorium_sheet(ws, auditorium_halls, exam_date, session):
         for dept, students in sorted(dept_students.items()):
             students_sorted = sorted(students)
             range_text = students_sorted[0] if len(students_sorted) == 1 else f"{students_sorted[0]} TO {students_sorted[-1]}"
-            dept_display = f"7 {dept}" if not dept.startswith("7") else dept
-            ws.cell(row=current_row, column=1, value=dept_display).font = DATA_FONT
+            ws.cell(row=current_row, column=1, value=dept).font = DATA_FONT
             ws.cell(row=current_row, column=2, value=range_text).font = DATA_FONT
             ws.cell(row=current_row, column=6, value=len(students)).font = DATA_FONT
             current_row += 1
@@ -436,31 +468,6 @@ def _write_auditorium_sheet(ws, auditorium_halls, exam_date, session):
         current_row += 2
 
 
-def _write_planning_sheet(ws, dept_data, all_halls):
-    """Write the Sheet1 planning/balance grid."""
-    # Header row with departments
-    depts = sorted(dept_data.keys())
-    
-    ws.cell(row=1, column=1, value="Total").font = HEADER_FONT
-    for col, dept in enumerate(depts, 2):
-        ws.cell(row=1, column=col, value=len(dept_data[dept]['students'])).font = DATA_FONT
-    
-    ws.cell(row=4, column=1, value="Balance").font = HEADER_FONT
-    for col, dept in enumerate(depts, 2):
-        ws.cell(row=4, column=col, value=0).font = DATA_FONT  # All allocated
-    
-    # Hall rows
-    row = 5
-    for hall_seating in all_halls:
-        if hall_seating.studentsCount == 0:
-            continue
-        ws.cell(row=row, column=1, value=hall_seating.hall.name).font = DATA_FONT
-        row += 1
-    
-    # Column widths
-    ws.column_dimensions['A'].width = 10
-    for col in range(2, len(depts) + 2):
-        ws.column_dimensions[get_column_letter(col)].width = 8
 
 
 def generate_student_wise_excel(seating_result: SeatingResult) -> BytesIO:
@@ -485,6 +492,13 @@ def generate_student_wise_excel(seating_result: SeatingResult) -> BytesIO:
         worksheet = writer.sheets['Student Allocations']
         for idx, col in enumerate(df.columns):
             worksheet.column_dimensions[chr(65 + idx)].width = 20
+        
+        # Freeze the top row (header)
+        worksheet.freeze_panes = 'A2'
+        
+        # Add auto-filter on the header row
+        last_col_letter = chr(65 + len(df.columns) - 1)
+        worksheet.auto_filter.ref = f"A1:{last_col_letter}{len(df) + 1}"
             
     output.seek(0)
     return output
