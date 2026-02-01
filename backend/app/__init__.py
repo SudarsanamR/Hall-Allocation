@@ -143,6 +143,14 @@ def create_app():
     app.register_blueprint(admin.bp)
     app.register_blueprint(csrf_bp.bp)
     
+    # Error Handlers
+    from flask_wtf.csrf import CSRFError
+    from flask import jsonify
+    
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        return jsonify({'success': False, 'message': e.description}), 400
+    
     # Swagger API Documentation (disabled only on Render production)
     if not os.environ.get('RENDER'):
         from flasgger import Swagger
