@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Search, MapPin, Armchair, ChevronRight } from 'lucide-react';
 import { searchStudent } from '../utils/api';
+import { validateRegisterNumber } from '../utils/validation';
 import SeatingGrid from '../components/seating/SeatingGrid';
 import GradientText from '../components/ui/GradientText';
 
@@ -15,7 +16,17 @@ const StudentDashboard = () => {
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError(null);
+        setAllocations(null);
+
         if (!registerNumber.trim()) return;
+
+        // Validation
+        const validation = validateRegisterNumber(registerNumber);
+        if (!validation.isValid) {
+            setError(validation.error || 'Invalid Registration Number');
+            return;
+        }
 
         setLoading(true);
         setError(null);

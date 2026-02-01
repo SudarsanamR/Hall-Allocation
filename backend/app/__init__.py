@@ -45,6 +45,9 @@ def create_app():
             "https://tauri.localhost"
         ]
     
+    # Allow CSRF token validation from trusted frontend origins (fixes "referrer does not match host")
+    app.config['WTF_CSRF_TRUSTED_ORIGINS'] = allowed_origins
+    
     CORS(app, resources={r"/*": {
         "origins": allowed_origins,
         "supports_credentials": True,
