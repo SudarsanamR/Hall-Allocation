@@ -154,6 +154,12 @@ def create_app():
     
     @app.errorhandler(CSRFError)
     def handle_csrf_error(e):
+        from flask import request
+        # Debugging: Log CSRF details to stdout (visible in Render logs)
+        print(f"CSRF DEBUG: Referer received: '{request.referrer}'")
+        print(f"CSRF DEBUG: Host perceived: '{request.host}'")
+        print(f"CSRF DEBUG: Origin received: '{request.origin}'")
+        print(f"CSRF DEBUG: Trusted Origins config: {app.config.get('WTF_CSRF_TRUSTED_ORIGINS')}")
         return jsonify({'success': False, 'message': e.description}), 400
     
     # Swagger API Documentation (disabled only on Render production)
