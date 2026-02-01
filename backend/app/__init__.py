@@ -49,6 +49,8 @@ def create_app():
     
     # Allow CSRF token validation from trusted frontend origins (fixes "referrer does not match host")
     app.config['WTF_CSRF_TRUSTED_ORIGINS'] = allowed_origins
+    # Disable strict SSL referrer checking for cross-origin setup (CSRF token still provides security)
+    app.config['WTF_CSRF_SSL_STRICT'] = False
     
     CORS(app, resources={r"/*": {
         "origins": allowed_origins,
