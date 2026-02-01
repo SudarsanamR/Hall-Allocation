@@ -29,3 +29,8 @@ dist-ssr
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Tauri signing keys (keep private key secret!)
+taursigner.key
+*.key
+!*.key.pub
