@@ -51,7 +51,16 @@ export default {
                 'xl': '1rem',
                 '2xl': '1.5rem',
                 '3xl': '2rem',
-            }
+            },
+            animation: {
+                'slide-up': 'slideUp 0.3s ease-out',
+            },
+            keyframes: {
+                slideUp: {
+                    '0%': { opacity: '0', transform: 'translateX(-50%) translateY(20px)' },
+                    '100%': { opacity: '1', transform: 'translateX(-50%) translateY(0)' },
+                },
+            },
         },
     },
     plugins: [],

@@ -12,6 +12,7 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import NetworkStatus from './components/ui/NetworkStatus';
 
 function App() {
   useEffect(() => {
@@ -23,6 +24,7 @@ function App() {
       <BrowserRouter>
         <div className="min-h-screen">
           <TopBar />
+          <NetworkStatus />
 
           <ErrorBoundary>
             <main className="pt-36 md:pt-32 p-4 md:p-8 animate-fade-in">

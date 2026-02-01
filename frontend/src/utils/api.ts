@@ -43,6 +43,14 @@ export const fetchCsrfToken = async () => {
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
+        // Network error (no internet, server down, etc.)
+        if (!error.response) {
+            // Dispatch event for components to show network status
+            window.dispatchEvent(new CustomEvent('network:error', {
+                detail: { message: 'Unable to connect to the server. Please check your internet connection.' }
+            }));
+        }
+
         // CSRF Retry
         if (error.response?.status === 400 && error.response?.data?.message?.includes('CSRF')) {
             await fetchCsrfToken();
@@ -74,7 +82,14 @@ export const login = async (username: string, password: string): Promise<AuthRes
         const response = await api.post<AuthResponse>('/auth/login', { username, password });
         return response.data;
     } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
+        if (axios.isAxiosError(error)) {
+            // Network error (no internet, server down, etc.)
+            if (!error.response) {
+                return {
+                    success: false,
+                    message: 'Network error: Unable to connect to the server. Please check your internet connection.'
+                };
+            }
             return error.response.data as AuthResponse;
         }
         return { success: false, message: 'Login failed' };

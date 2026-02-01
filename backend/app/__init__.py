@@ -35,7 +35,10 @@ def create_app():
         frontend_url = os.environ.get('FRONTEND_URL', 'https://gcee-examhall.vercel.app').rstrip('/')
         allowed_origins = [
             frontend_url,
-            'https://gcee-examhall.vercel.app'
+            'https://gcee-examhall.vercel.app',
+            # Tauri desktop app origins
+            'tauri://localhost',
+            'https://tauri.localhost'
         ]
     else:
         allowed_origins = [
