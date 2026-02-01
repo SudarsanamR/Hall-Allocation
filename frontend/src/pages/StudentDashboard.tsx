@@ -72,6 +72,7 @@ const StudentDashboard = () => {
                                 maxLength={12}
                                 placeholder="Register Number (12 digits)"
                                 className="w-full pl-12 pr-4 py-4 rounded-xl bg-gray-50 dark:bg-gray-800 border-none focus:ring-2 focus:ring-primary-500 dark:text-white placeholder-gray-400 text-lg transition-all"
+                                aria-label="Register Number"
                             />
                         </div>
                         <button

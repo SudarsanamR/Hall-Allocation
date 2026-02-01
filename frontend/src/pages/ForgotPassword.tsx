@@ -82,12 +82,13 @@ const ForgotPassword = () => {
                                     Enter your username to retrieve your security question.
                                 </p>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
+                                    <label htmlFor="fp-username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                             <User className="text-gray-400" size={18} />
                                         </div>
                                         <input
+                                            id="fp-username"
                                             type="text"
                                             value={username}
                                             onChange={(e) => setUsername(e.target.value)}
@@ -98,7 +99,7 @@ const ForgotPassword = () => {
                                         />
                                     </div>
                                 </div>
-                                {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                                {error && <p role="alert" className="text-red-500 text-sm text-center">{error}</p>}
                                 <button type="submit" disabled={loading} className="btn-primary w-full flex justify-center py-3">
                                     {loading ? 'Finding User...' : 'Next'} <ArrowRight size={18} className="ml-2" />
                                 </button>
@@ -113,8 +114,10 @@ const ForgotPassword = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Your Answer</label>
+
+                                    <label htmlFor="fp-answer" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Your Answer</label>
                                     <input
+                                        id="fp-answer"
                                         type="text"
                                         value={answer}
                                         onChange={(e) => setAnswer(e.target.value)}
@@ -126,12 +129,13 @@ const ForgotPassword = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New Password</label>
+                                    <label htmlFor="fp-new-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New Password</label>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                             <Lock className="text-gray-400" size={18} />
                                         </div>
                                         <input
+                                            id="fp-new-password"
                                             type="password"
                                             value={newPassword}
                                             onChange={(e) => setNewPassword(e.target.value)}
@@ -143,7 +147,7 @@ const ForgotPassword = () => {
                                     </div>
                                 </div>
 
-                                {error && <p className="text-red-500 text-sm text-center bg-red-50 p-2 rounded">{error}</p>}
+                                {error && <p role="alert" className="text-red-500 text-sm text-center bg-red-50 p-2 rounded">{error}</p>}
 
                                 <button type="submit" disabled={loading} className="btn-primary w-full flex justify-center py-3">
                                     {loading ? 'Resetting...' : 'Reset Password'}

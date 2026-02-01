@@ -3,6 +3,7 @@ import {
     Users, Check, Trash2, Activity, Clock, Settings, Save
 } from 'lucide-react';
 import { getAdmins, getAuditLogs, verifyAdmin, deleteAdmin, clearAuditLogs } from '../utils/api';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 import type { AdminUser, AuditLog } from '../types';
 
 const SuperAdminDashboard = () => {
@@ -100,6 +101,7 @@ const SuperAdminDashboard = () => {
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'users'
                             ? 'bg-primary-100 text-primary-800'
                             : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'}`}
+                        aria-current={activeTab === 'users' ? 'page' : undefined}
                     >
                         <Users size={18} className="inline mr-2" />
                         Admins
@@ -109,6 +111,7 @@ const SuperAdminDashboard = () => {
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'logs'
                             ? 'bg-primary-100 text-primary-800'
                             : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'}`}
+                        aria-current={activeTab === 'logs' ? 'page' : undefined}
                     >
                         <Activity size={18} className="inline mr-2" />
                         Audit Logs
@@ -118,6 +121,7 @@ const SuperAdminDashboard = () => {
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'settings'
                             ? 'bg-primary-100 text-primary-800'
                             : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'}`}
+                        aria-current={activeTab === 'settings' ? 'page' : undefined}
                     >
                         <Settings size={18} className="inline mr-2" />
                         Settings
@@ -125,7 +129,7 @@ const SuperAdminDashboard = () => {
                 </div>
             </div>
 
-            {loading && <div className="text-center py-10"><div className="animate-spin inline-block w-8 h-8 boundary-t-2 border-primary-600 rounded-full"></div></div>}
+            {loading && <LoadingSpinner text="Loading data..." />}
 
             {!loading && activeTab === 'users' && (
                 <div className="card overflow-hidden">
@@ -179,11 +183,11 @@ const SuperAdminDashboard = () => {
                                             {user.role !== 'super_admin' && (
                                                 <div className="flex justify-end gap-2">
                                                     {!user.is_verified && (
-                                                        <button onClick={() => handleVerify(user.id)} className="text-green-600 hover:text-green-900 flex items-center gap-1" title="Approve">
+                                                        <button onClick={() => handleVerify(user.id)} className="text-green-600 hover:text-green-900 flex items-center gap-1" title="Approve" aria-label={`Approve ${user.username}`}>
                                                             <Check size={16} /> Approve
                                                         </button>
                                                     )}
-                                                    <button onClick={() => handleDelete(user.id)} className="text-red-600 hover:text-red-900 flex items-center gap-1" title="Delete">
+                                                    <button onClick={() => handleDelete(user.id)} className="text-red-600 hover:text-red-900 flex items-center gap-1" title="Delete" aria-label={`Delete ${user.username}`}>
                                                         <Trash2 size={16} />
                                                     </button>
                                                 </div>
@@ -216,6 +220,7 @@ const SuperAdminDashboard = () => {
                                 }
                             }}
                             className="text-red-600 hover:text-red-900 flex items-center gap-1 text-sm px-3 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            aria-label="Clear Audit Logs"
                         >
                             <Trash2 size={16} /> Clear Logs
                         </button>
@@ -264,8 +269,9 @@ const SuperAdminDashboard = () => {
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Profile Settings</h2>
                         <form onSubmit={handleUpdateProfile} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
+                                <label htmlFor="profileUsername" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
                                 <input
+                                    id="profileUsername"
                                     type="text"
                                     value={profileForm.username}
                                     onChange={e => setProfileForm({ ...profileForm, username: e.target.value })}
@@ -277,8 +283,9 @@ const SuperAdminDashboard = () => {
                             <hr className="my-4 border-gray-200 dark:border-gray-700" />
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Current Password (Required)</label>
+                                <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Current Password (Required)</label>
                                 <input
+                                    id="currentPassword"
                                     type="password"
                                     value={profileForm.current_password}
                                     onChange={e => setProfileForm({ ...profileForm, current_password: e.target.value })}
@@ -289,8 +296,9 @@ const SuperAdminDashboard = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New Password (Optional)</label>
+                                <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New Password (Optional)</label>
                                 <input
+                                    id="newPassword"
                                     type="password"
                                     value={profileForm.new_password}
                                     onChange={e => setProfileForm({ ...profileForm, new_password: e.target.value })}
@@ -301,8 +309,9 @@ const SuperAdminDashboard = () => {
 
                             {profileForm.new_password && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm New Password</label>
+                                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm New Password</label>
                                     <input
+                                        id="confirmPassword"
                                         type="password"
                                         value={profileForm.confirm_password}
                                         onChange={e => setProfileForm({ ...profileForm, confirm_password: e.target.value })}

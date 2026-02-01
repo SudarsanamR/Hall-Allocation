@@ -3,6 +3,7 @@ from app.models.sql import Admin, db
 from werkzeug.security import check_password_hash, generate_password_hash
 from app.services.audit import log_action
 from datetime import datetime
+from app.decorators import login_required, role_required
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -55,6 +56,7 @@ def login():
 
 @bp.route('/register', methods=['POST'])
 def register():
+    # ... existing code ...
     # Only for creating NEW admins (Role: admin)
     data = request.get_json()
     username = data.get('username', '')[:MAX_USERNAME_LENGTH]
@@ -91,6 +93,7 @@ def register():
     return jsonify({'success': True, 'message': 'Registration successful. Waiting for Super Admin approval.'}), 201
 
 @bp.route('/logout', methods=['POST'])
+@login_required
 def logout():
     user_id = session.get('user_id')
     if user_id:
@@ -99,9 +102,9 @@ def logout():
     return jsonify({'success': True, 'message': 'Logged out'}), 200
 
 @bp.route('/me', methods=['GET'])
+@login_required
 def me():
-    if 'user_id' not in session:
-        return jsonify({'authenticated': False}), 401
+    # Decorator checks 'user_id' in session
         
     admin = Admin.query.get(session['user_id'])
     if not admin:
@@ -163,9 +166,9 @@ def reset_password():
     return jsonify({'success': True, 'message': 'Password reset successful'}), 200
 
 @bp.route('/change-password', methods=['POST'])
+@login_required
 def change_password():
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    # removed manual session check
         
     data = request.get_json()
     old_password = data.get('old_password')
@@ -182,10 +185,11 @@ def change_password():
     log_action(admin.id, 'PASSWORD_CHANGE', 'Password changed logged in')
     
     return jsonify({'success': True, 'message': 'Password changed successfully'}), 200
+
 @bp.route('/update-profile', methods=['PUT'])
+@login_required
 def update_profile():
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Not authenticated'}), 401
+    # Removed manual session check
         
     data = request.get_json()
     current_password = data.get('current_password')

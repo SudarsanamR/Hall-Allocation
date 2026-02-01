@@ -82,6 +82,7 @@ export interface Stats {
     sessions: number;
     departmentBreakdown?: Record<string, number>;
     subjectBreakdown?: Record<string, number>;
+    blockBreakdown?: Record<string, number>;
 }
 
 // Form Types
@@ -109,4 +110,17 @@ export interface AuditLog {
     action: string;
     details: string;
     timestamp: string;
+}
+
+export interface GenericResponse {
+    success: boolean;
+    message?: string;
+}
+
+export interface AuthResponse extends GenericResponse {
+    user?: AdminUser;
+}
+
+export interface SecurityQuestionResponse extends GenericResponse {
+    question?: string;
 }

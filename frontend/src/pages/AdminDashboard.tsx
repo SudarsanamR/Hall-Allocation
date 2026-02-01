@@ -161,18 +161,22 @@ const AdminDashboard = () => {
     };
 
     const handleClear = async () => {
-        if (!window.confirm("Are you sure you want to clear ALL seating allocations?\n\nThis action cannot be undone. You will need to regenerate seating to get it back.")) {
+        if (!window.confirm("Are you sure you want to reset everything? This will clear all student data and allocations.\n\nYou will need to re-upload the PDF to generate new seating.")) {
             return;
         }
 
         setIsLoading(true);
         try {
             await clearAllocations();
-            // Reset local state
+            // Reset local state completely
             setAvailableSessions([]);
             setSelectedSession('');
             setCurrentResult(null);
-            // Optional: You could allow re-generating immediately or just leave it empty
+
+            // Clear upload status and student flag
+            setUploadResult(null);
+            setHasStudents(false);
+
         } catch (err) {
             console.error(err);
             setError('Failed to clear allocations.');
@@ -204,6 +208,7 @@ const AdminDashboard = () => {
     // --- Filter State ---
     const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
     const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+    const [selectedBlocks, setSelectedBlocks] = useState<string[]>([]);
 
     // --- Helpers ---
     // currentResult is now state, managed by fetchSessionDetails
@@ -213,16 +218,22 @@ const AdminDashboard = () => {
         if (currentResult) {
             const depts = new Set<string>();
             const subjs = new Set<string>();
+            const blocks = new Set<string>();
+
+            // Collect Depeartments and Subjects from Students
             currentResult.studentAllocation.forEach(s => {
                 if (s.department) depts.add(s.department);
-                // Extract subject code/name to match StatCards logic
-                // Assuming s.subject format: "CODE: Name" or just "Name"
-                // StatCards uses: Object.keys(stats.subjectBreakdown)
-                // subjectBreakdown uses s.subject directly.
                 if (s.subject) subjs.add(s.subject);
             });
+
+            // Collect Blocks from Halls
+            currentResult.halls.forEach(h => {
+                if (h.hall.block) blocks.add(h.hall.block);
+            });
+
             setSelectedDepts(Array.from(depts));
             setSelectedSubjects(Array.from(subjs));
+            setSelectedBlocks(Array.from(blocks));
         }
     }, [currentResult]);
 
@@ -242,6 +253,13 @@ const AdminDashboard = () => {
         return acc;
     }, {} as Record<string, number>);
 
+    // Calculate block breakdown (based on halls used)
+    const blockBreakdown = currentResult?.halls.reduce((acc, curr) => {
+        const block = curr.hall.block;
+        acc[block] = (acc[block] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
     // --- Filter Handlers ---
     const toggleDept = (dept: string) => {
         setSelectedDepts(prev =>
@@ -255,10 +273,22 @@ const AdminDashboard = () => {
         );
     };
 
+    const toggleBlock = (block: string) => {
+        setSelectedBlocks(prev =>
+            prev.includes(block) ? prev.filter(b => b !== block) : [...prev, block]
+        );
+    };
+
     const selectAllSubjects = () => {
         // Explicitly select ALL subjects
         if (subjectBreakdown) {
             setSelectedSubjects(Object.keys(subjectBreakdown));
+        }
+    };
+
+    const selectAllBlocks = () => {
+        if (blockBreakdown) {
+            setSelectedBlocks(Object.keys(blockBreakdown));
         }
     };
 
@@ -368,6 +398,7 @@ const AdminDashboard = () => {
                         accept=".pdf"
                         onChange={handleChange}
                         className="hidden"
+                        aria-label="Upload PDF file"
                     />
 
                     <div
@@ -384,6 +415,15 @@ const AdminDashboard = () => {
                         onDragOver={handleDrag}
                         onDrop={handleDrop}
                         onClick={() => fileInputRef.current?.click()}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                fileInputRef.current?.click();
+                            }
+                        }}
+                        aria-label="Click or drag to upload PDF file"
                     >
                         <div className="w-16 h-16 bg-primary-100 dark:bg-primary-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
                             {uploading ? (
@@ -441,6 +481,7 @@ const AdminDashboard = () => {
                                 <button
                                     onClick={() => navigate('/halls')}
                                     className="btn-secondary flex items-center gap-2 text-sm bg-white dark:bg-gray-800 flex-1 sm:flex-none justify-center"
+                                    aria-label="Manage Halls"
                                 >
                                     <LayoutGrid size={16} />
                                     <span className="whitespace-nowrap">Manage Halls</span>
@@ -448,6 +489,7 @@ const AdminDashboard = () => {
                                 <button
                                     onClick={handleGenerate}
                                     className="btn-secondary flex items-center gap-2 text-sm flex-1 sm:flex-none justify-center"
+                                    aria-label="Refresh Allocation"
                                 >
                                     <RefreshCw size={16} />
                                     <span className="whitespace-nowrap">Refresh Allocation</span>
@@ -456,6 +498,7 @@ const AdminDashboard = () => {
                                     onClick={handleClear}
                                     className="btn-secondary flex items-center gap-2 text-sm !text-red-600 hover:!bg-red-50 dark:!text-red-400 dark:hover:!bg-red-900/50 flex-1 sm:flex-none justify-center"
                                     title="Delete all current allocations"
+                                    aria-label="Clear All Allocations"
                                 >
                                     <Trash2 size={16} />
                                     <span className="whitespace-nowrap">Clear All</span>
@@ -524,12 +567,15 @@ const AdminDashboard = () => {
                             {/* Stats */}
                             <div className="mt-8 mb-8">
                                 <StatCards
-                                    stats={stats}
+                                    stats={{ ...stats, blockBreakdown }}
                                     selectedDepts={selectedDepts}
                                     selectedSubjects={selectedSubjects}
+                                    selectedBlocks={selectedBlocks}
                                     onToggleDept={toggleDept}
                                     onToggleSubject={toggleSubject}
+                                    onToggleBlock={toggleBlock}
                                     onSelectAllSubjects={selectAllSubjects}
+                                    onSelectAllBlocks={selectAllBlocks}
                                     colorMap={colorMap}
                                 />
                             </div>
@@ -539,7 +585,11 @@ const AdminDashboard = () => {
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                                     {/* Filter Halls based on selection */}
                                     {currentResult.halls.filter(hall => {
-                                        // Show hall if it has ANY student matching the filter
+                                        // 1. Block Filter
+                                        const matchesBlock = selectedBlocks.includes(hall.hall.block);
+                                        if (!matchesBlock) return false;
+
+                                        // 2. Student Filter (Show hall if it has ANY student matching the filter)
                                         return hall.grid.some(row =>
                                             row.some(seat =>
                                                 seat.student &&

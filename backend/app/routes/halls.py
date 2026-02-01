@@ -5,6 +5,7 @@ from flask import Blueprint, request, jsonify
 import uuid
 from app.models import Hall
 from app.extensions import db
+from app.decorators import login_required, role_required
 
 bp = Blueprint('halls', __name__, url_prefix='/api')
 
@@ -58,6 +59,7 @@ DEFAULT_HALLS = [
 ]
 
 @bp.route('/halls', methods=['GET'])
+@login_required
 def get_halls():
     """Get all halls sorted by priority then block then name"""
     # Sort by priority (asc) then block (asc) then name (asc)
@@ -65,6 +67,7 @@ def get_halls():
     return jsonify([h.to_dict() for h in halls]), 200
 
 @bp.route('/halls', methods=['POST'])
+@role_required(['admin', 'super_admin'])
 def create_hall():
     """Create a new hall"""
     data = request.json
@@ -87,6 +90,7 @@ def create_hall():
     return jsonify(hall.to_dict()), 201
 
 @bp.route('/halls/<hall_id>', methods=['PUT'])
+@role_required(['admin', 'super_admin'])
 def update_hall(hall_id):
     """Update an existing hall"""
     data = request.json
@@ -114,6 +118,7 @@ def update_hall(hall_id):
     return jsonify(hall.to_dict()), 200
 
 @bp.route('/halls/bulk-capacity', methods=['POST'])
+@role_required(['admin', 'super_admin'])
 def update_capacity_bulk():
     """Bulk update hall capacities"""
     data = request.json
@@ -141,6 +146,7 @@ def update_capacity_bulk():
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/halls/bulk-dimensions', methods=['POST'])
+@role_required(['admin', 'super_admin'])
 def update_dimensions_bulk():
     """Bulk update hall rows, columns, and recalculate capacity"""
     data = request.json
@@ -171,6 +177,7 @@ def update_dimensions_bulk():
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/halls/<hall_id>', methods=['DELETE'])
+@role_required(['admin', 'super_admin'])
 def delete_hall(hall_id):
     """Delete a hall"""
     hall = Hall.query.get(hall_id)
@@ -182,6 +189,7 @@ def delete_hall(hall_id):
     return jsonify({'message': 'Hall deleted successfully'}), 200
 
 @bp.route('/halls/initialize', methods=['POST'])
+@role_required(['admin', 'super_admin'])
 def initialize_default_halls():
     """Initialize default hall configuration (Force Reset)"""
     # Clear existing halls
@@ -194,11 +202,13 @@ def initialize_default_halls():
     return jsonify([h.to_dict() for h in seeded]), 200
 
 @bp.route('/halls/reorder_blocks', methods=['POST'])
+@role_required(['admin', 'super_admin'])
 def reorder_blocks():
     """Reorder halls based on block priority - Not persisted in DB schema currently"""
     return jsonify({'message': 'Reordering not supported in persistent mode yet'}), 200
 
 @bp.route('/halls/reorder', methods=['POST'])
+@role_required(['admin', 'super_admin'])
 def reorder_halls():
     """
     Reorder halls within a block.

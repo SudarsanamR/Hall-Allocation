@@ -39,24 +39,27 @@ const HallForm = ({ onSubmit, onCancel, initialData }: HallFormProps) => {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                <label htmlFor="hallName" className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
                     Hall Name
                 </label>
                 <input
+                    id="hallName"
                     type="text"
                     value={formData.name}
                     onChange={(e) => handleChange('name', e.target.value)}
                     className="input-field"
                     placeholder="e.g., I1, T6A, AUD1"
                     required
+                    autoFocus
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                <label htmlFor="hallBlock" className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
                     Block
                 </label>
                 <input
+                    id="hallBlock"
                     type="text"
                     value={formData.block}
                     onChange={(e) => handleChange('block', e.target.value)}
@@ -68,10 +71,11 @@ const HallForm = ({ onSubmit, onCancel, initialData }: HallFormProps) => {
 
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    <label htmlFor="hallRows" className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
                         Rows
                     </label>
                     <input
+                        id="hallRows"
                         type="number"
                         value={formData.rows}
                         onChange={(e) => handleChange('rows', parseInt(e.target.value) || 0)}
@@ -83,10 +87,11 @@ const HallForm = ({ onSubmit, onCancel, initialData }: HallFormProps) => {
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    <label htmlFor="hallCols" className="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
                         Columns
                     </label>
                     <input
+                        id="hallCols"
                         type="number"
                         value={formData.columns}
                         onChange={(e) => handleChange('columns', parseInt(e.target.value) || 0)}
@@ -121,6 +126,7 @@ const HallForm = ({ onSubmit, onCancel, initialData }: HallFormProps) => {
                             className="input-field"
                             min={1}
                             placeholder="Enter max capacity"
+                            aria-label="Custom Capacity"
                         />
                         <p className="text-xs text-gray-500 mt-1">
                             Use this to limit seats regardless of rows/columns

@@ -47,7 +47,7 @@ const Register = () => {
     if (success) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4">
-                <div className="card max-w-md w-full p-8 text-center animate-fade-in">
+                <div role="status" className="card max-w-md w-full p-8 text-center animate-fade-in">
                     <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <CheckCircle className="text-green-600" size={32} />
                     </div>
@@ -76,12 +76,14 @@ const Register = () => {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
+
+                        <label htmlFor="reg-username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <User className="text-gray-400" size={18} />
                             </div>
                             <input
+                                id="reg-username"
                                 type="text"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
@@ -93,12 +95,13 @@ const Register = () => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                        <label htmlFor="reg-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <Lock className="text-gray-400" size={18} />
                             </div>
                             <input
+                                id="reg-password"
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -111,12 +114,13 @@ const Register = () => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Security Question</label>
+                        <label htmlFor="reg-question" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Security Question</label>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <KeyRound className="text-gray-400" size={18} />
                             </div>
                             <input
+                                id="reg-question"
                                 type="text"
                                 value={securityQuestion}
                                 onChange={(e) => setSecurityQuestion(e.target.value)}
@@ -128,12 +132,13 @@ const Register = () => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Security Answer</label>
+                        <label htmlFor="reg-answer" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Security Answer</label>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <KeyRound className="text-gray-400" size={18} />
                             </div>
                             <input
+                                id="reg-answer"
                                 type="text"
                                 value={securityAnswer}
                                 onChange={(e) => setSecurityAnswer(e.target.value)}
@@ -145,7 +150,7 @@ const Register = () => {
                         <p className="text-xs text-gray-500 mt-1">Used for password recovery</p>
                     </div>
 
-                    {error && <p className="text-red-500 text-sm text-center bg-red-50 p-2 rounded">{error}</p>}
+                    {error && <p role="alert" className="text-red-500 text-sm text-center bg-red-50 p-2 rounded">{error}</p>}
 
                     <button
                         type="submit"

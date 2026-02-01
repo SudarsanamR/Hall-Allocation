@@ -6,19 +6,18 @@ from app.services.audit import log_action
 from app.models import db, Student, Hall, Allocation, SeatingResult, HallSeating, Seat
 from app.services import allocate_session_strict, generate_hall_wise_excel, generate_student_wise_excel
 from collections import defaultdict
+from app.decorators import role_required
 import uuid
 
 bp = Blueprint('seating', __name__, url_prefix='/api')
 
 @bp.route('/generate', methods=['POST'])
+@role_required(['admin', 'super_admin'])
 def generate_seating():
     """
     Generate seating arrangements for all sessions found in student data.
     Groups students by (ExamDate, Session) and runs allocation for each group.
     """
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-        
     students = Student.query.all()
     if not students:
         return jsonify({'error': 'No student data available. Please upload student data first.'}), 400
@@ -38,7 +37,7 @@ def generate_seating():
         results = {}
         
         # Clear existing allocations?
-        # Requirement: "Show only till next exam hall allocation"
+        # requirement: "Show only till next exam hall allocation"
         # The upload route already Clears All allocations.
         # But if we call generate multiple times without upload (e.g. changing settings),
         # we should probably wipe allocations for the sessions we are generating.
@@ -138,13 +137,11 @@ def generate_seating():
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/sessions', methods=['GET'])
+@role_required(['admin', 'super_admin'])
 def get_sessions():
     """
     Get list of available sessions from existing allocations.
     """
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-        
     try:
         distinct_sessions = db.session.query(Allocation.session_key).distinct().all()
         sessions = sorted([s[0] for s in distinct_sessions])
@@ -153,26 +150,26 @@ def get_sessions():
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/clear', methods=['DELETE'])
+@role_required(['admin', 'super_admin'])
 def clear_allocations():
     """
-    Clear all seating allocations from the database.
-    This does NOT delete students or halls, only the seating arrangement.
+    Clear all seating allocations AND student data from the database.
+    This ensures a fresh start for the next generation.
     """
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-        
     try:
         Allocation.query.delete()
+        Student.query.delete()
         db.session.commit()
         
-        log_action(session['user_id'], 'CLEAR_SEATING', 'Cleared all allocations')
+        log_action(session['user_id'], 'CLEAR_SEATING', 'Cleared all allocations and student data')
         
-        return jsonify({'message': 'All allocations cleared successfully'}), 200
+        return jsonify({'message': 'All allocations and student data cleared successfully'}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/seating/<session_key>', methods=['GET'])
+@role_required(['admin', 'super_admin'])
 def get_session_seating(session_key):
     """
     Get detailed seating result for a specific session.
@@ -345,6 +342,7 @@ def reconstruct_seating_result(session_key):
         raise e
 
 @bp.route('/download/hall-wise', methods=['GET'])
+@role_required(['admin', 'super_admin'])
 def download_hall_wise():
     """Download hall-wise seating Excel file for a specific session"""
     session_key = request.args.get('session')
@@ -380,6 +378,7 @@ def download_hall_wise():
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/download/student-wise', methods=['GET'])
+@role_required(['admin', 'super_admin'])
 def download_student_wise():
     """Download student-wise allocation Excel file"""
     session_key = request.args.get('session')

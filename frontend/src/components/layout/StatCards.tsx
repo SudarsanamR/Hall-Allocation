@@ -4,9 +4,12 @@ interface StatCardsProps {
     stats: Stats;
     selectedDepts: string[];
     selectedSubjects: string[];
+    selectedBlocks?: string[];
     onToggleDept: (dept: string) => void;
     onToggleSubject: (subj: string) => void;
+    onToggleBlock?: (block: string) => void;
     onSelectAllSubjects?: () => void;
+    onSelectAllBlocks?: () => void;
     colorMap: Map<string, string>;
 }
 
@@ -14,9 +17,12 @@ const StatCards = ({
     stats,
     selectedDepts,
     selectedSubjects,
+    selectedBlocks = [],
     onToggleDept,
     onToggleSubject,
+    onToggleBlock,
     onSelectAllSubjects,
+    onSelectAllBlocks,
     colorMap
 }: StatCardsProps) => {
 
@@ -46,6 +52,8 @@ const StatCards = ({
             title: 'Halls Used',
             value: stats.hallsUsed,
             gradient: 'from-purple-500 to-purple-600',
+            details: stats.blockBreakdown,
+            isBlock: true,
         },
         {
             title: 'Subjects',
@@ -88,7 +96,21 @@ const StatCards = ({
                                     className={`
                                         inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold uppercase tracking-wide
                                         border transition-all duration-200 select-none
-                                        ${getBadgeStyle('All', selectedSubjects.length === 0, card.gradient)}
+                                        ${getBadgeStyle('All', selectedSubjects.length === Object.keys(card.details || {}).length, card.gradient)}
+                                    `}
+                                >
+                                    Select All
+                                </button>
+                            )}
+
+                            {/* Add "All" Button for Blocks if handler provided */}
+                            {(card as any).isBlock && onSelectAllBlocks && (
+                                <button
+                                    onClick={onSelectAllBlocks}
+                                    className={`
+                                        inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold uppercase tracking-wide
+                                        border transition-all duration-200 select-none
+                                        ${getBadgeStyle('All', selectedBlocks.length === Object.keys(card.details || {}).length, card.gradient)}
                                     `}
                                 >
                                     Select All
@@ -101,11 +123,14 @@ const StatCards = ({
                                     ? selectedDepts.includes(key)
                                     : card.isSubject
                                         ? selectedSubjects.includes(key)
-                                        : false;
+                                        : (card as any).isBlock && selectedBlocks
+                                            ? selectedBlocks.includes(key)
+                                            : false;
 
                                 const toggle = () => {
                                     if (card.isDept) onToggleDept(key);
                                     if (card.isSubject) onToggleSubject(key);
+                                    if ((card as any).isBlock && onToggleBlock) onToggleBlock(key);
                                 };
 
                                 return (

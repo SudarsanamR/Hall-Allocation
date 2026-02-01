@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import HallManager from '../components/halls/HallManager';
 import HallForm from '../components/halls/HallForm';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { getHalls, createHall, updateHall, deleteHall, initializeDefaultHalls } from '../utils/api';
 import type { Hall, HallFormData } from '../types';
 import { RefreshCw, AlertCircle, ArrowLeft } from 'lucide-react';
@@ -92,11 +93,7 @@ const HallManagement = () => {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
-            </div>
-        );
+        return <LoadingSpinner size="lg" text="Loading halls..." />;
     }
 
     return (
@@ -106,6 +103,7 @@ const HallManagement = () => {
                     onClick={() => navigate('/admin')}
                     className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
                     title="Back to Dashboard"
+                    aria-label="Back to Dashboard"
                 >
                     <ArrowLeft size={24} />
                 </button>

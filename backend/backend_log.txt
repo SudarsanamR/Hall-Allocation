@@ -12,3 +12,9 @@ DEBUG: Bulk update for IDs: ['ea7bbaff-0b04-4da8-a4cb-cd42fb9bea09', '008cb948-7
 DEBUG: Updated 4 halls
 DEBUG: Bulk update for IDs: ['ea7bbaff-0b04-4da8-a4cb-cd42fb9bea09', '008cb948-7509-430a-9d7a-bac6635b0d8f', 'd067f27e-24a2-46ce-91c7-adf5abac0b95', 'a542ac65-149d-4797-a260-1df893361772'] with capacity: 25
 DEBUG: Updated 4 halls
+DEBUG: Bulk update for IDs: ['f0e4fd52-74b0-4a62-bc21-f617a2c85941', '04a4edd0-7227-45c9-bb62-c73b85368ec1'] with capacity: 20
+DEBUG: Updated 2 halls
+DEBUG: Bulk update for IDs: ['52fae112-563f-4ff0-961d-07d822373352', 'ed3e5e86-d8b3-4cdd-8b01-5d130a6fdc6d'] with capacity: 20
+DEBUG: Updated 2 halls
+DEBUG: Bulk update for IDs: ['05e785ae-026a-4100-b0fe-4a78e1448db6', '768a7b61-171e-4db2-a746-56fd6142c0d9'] with capacity: 20
+DEBUG: Updated 2 halls

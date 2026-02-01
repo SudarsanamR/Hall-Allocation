@@ -1,5 +1,6 @@
-
+import { memo } from 'react';
 import SeatCell from './SeatCell';
+
 import type { HallSeating } from '../../types';
 
 interface SeatingGridProps {
@@ -75,4 +76,4 @@ const SeatingGrid = ({
     );
 };
 
-export default SeatingGrid;
+export default memo(SeatingGrid);

@@ -1,4 +1,5 @@
 
+import { memo } from 'react';
 import type { Seat } from '../../types';
 
 interface SeatCellProps {
@@ -109,4 +110,4 @@ const SeatCell = ({
     );
 };
 
-export default SeatCell;
+export default memo(SeatCell);

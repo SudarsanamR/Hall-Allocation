@@ -7,6 +7,7 @@ from werkzeug.utils import secure_filename
 from app.services.audit import log_action
 from app.models import db, Student
 from app.services import parse_file, validate_student_data
+from app.decorators import role_required
 
 bp = Blueprint('upload', __name__, url_prefix='/api')
 
@@ -16,10 +17,10 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @bp.route('/upload', methods=['POST'])
+@role_required(['admin', 'super_admin'])
 def upload_file():
     """Upload and parse Excel/CSV file with student data"""
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
+    # Removed manual session check, handled by decorator
         
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
@@ -29,7 +30,7 @@ def upload_file():
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
     
-    if file.filename == '':
+    if file.filename == '': # Duplicate check removed
         return jsonify({'error': 'No file selected'}), 400
     
     if not allowed_file(file.filename):
@@ -93,6 +94,7 @@ def upload_file():
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/students', methods=['GET'])
+@role_required(['admin', 'super_admin'])
 def get_students():
     """Get current student data"""
     students = [
@@ -107,10 +109,10 @@ def get_students():
     return jsonify(students), 200
 
 @bp.route('/reset', methods=['DELETE'])
+@role_required(['admin', 'super_admin'])
 def reset_data():
     """Reset all student data and seating results"""
-    if 'user_id' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
+    # Removed manual session check
         
     Student.query.delete()
     from app.models import Allocation

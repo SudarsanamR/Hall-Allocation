@@ -116,6 +116,7 @@ const Upload = () => {
                     accept=".xlsx,.xls,.csv,.pdf"
                     onChange={handleChange}
                     className="hidden"
+                    aria-label="Upload File"
                 />
 
                 <div
@@ -132,6 +133,15 @@ const Upload = () => {
                     onDragOver={handleDrag}
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            fileInputRef.current?.click();
+                        }
+                    }}
+                    aria-label="Click or drag to upload file"
                 >
                     <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         {uploading ? (
@@ -156,7 +166,7 @@ const Upload = () => {
             {/* Error */}
             {
                 error && (
-                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+                    <div role="alert" className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
                         <AlertCircle className="text-red-600 flex-shrink-0" size={20} />
                         <div>
                             <p className="font-semibold text-red-900">Error</p>
@@ -169,7 +179,7 @@ const Upload = () => {
             {/* Success */}
             {
                 result && (
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+                    <div role="status" className="bg-green-50 border border-green-200 rounded-xl p-6">
                         <div className="flex items-start gap-3 mb-4">
                             <CheckCircle2 className="text-green-600 flex-shrink-0" size={24} />
                             <div>

@@ -1,18 +1,17 @@
 import axios from 'axios';
-import type { Hall, Student, UploadFileResponse, SeatingResult, AdminUser, AuditLog, HallFormData } from '../types';
+import type { Hall, Student, UploadFileResponse, SeatingResult, AdminUser, AuditLog, HallFormData, GenericResponse, AuthResponse, SecurityQuestionResponse } from '../types';
 
-// Sync Requirement: Desktop should use Online Server
-// If PROD -> Use Render.
-// If DEV -> Use Localhost/Vite Env.
+// Environment-aware API URL configuration
+const API_BASE_URL = import.meta.env.VITE_API_URL ||
+    (import.meta.env.PROD
+        ? 'https://hall-allocation.onrender.com/api'
+        : 'http://localhost:5001/api'
+    );
 
-const API_BASE_URL = 'http://localhost:5001/api';
-// import.meta.env.VITE_API_URL ||
-// (import.meta.env.PROD
-//     ? 'https://hall-allocation-7n1u.onrender.com/api'
-//     : 'http://localhost:5001/api'
-// );
-
-console.log('🔌 API Base URL:', API_BASE_URL);
+// Only log in development
+if (import.meta.env.DEV) {
+    console.log('🔌 API Base URL:', API_BASE_URL);
+}
 
 const api = axios.create({
     baseURL: API_BASE_URL,
@@ -23,13 +22,62 @@ const api = axios.create({
     },
 });
 
-// Authentication
-export const login = async (username: string, password: string): Promise<{ success: boolean; user?: AdminUser; message?: string }> => {
+let csrfToken: string | null = null;
+
+export const getCsrfToken = () => csrfToken;
+
+export const fetchCsrfToken = async () => {
     try {
-        const response = await api.post('/auth/login', { username, password });
+        const response = await api.get('/csrf-token');
+        csrfToken = response.data.csrf_token;
+        if (csrfToken) {
+            api.defaults.headers.common['X-CSRFToken'] = csrfToken;
+        }
+        return csrfToken;
+    } catch (error) {
+        console.error('Failed to fetch CSRF token:', error);
+    }
+};
+
+// Interceptors
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        // CSRF Retry
+        if (error.response?.status === 400 && error.response?.data?.message?.includes('CSRF')) {
+            await fetchCsrfToken();
+            if (csrfToken) {
+                error.config.headers['X-CSRFToken'] = csrfToken;
+                return api.request(error.config);
+            }
+        }
+
+        // 401 Unauthorized - Session Expired or Invalid
+        if (error.response?.status === 401) {
+            // Dispatch event for AuthContext to handle (clear state, redirect)
+            window.dispatchEvent(new Event('auth:unauthorized'));
+            // Optionally clear storage here too as redundancy
+            localStorage.removeItem('isAuthenticated');
+            // Do not redirect if checking auth status (e.g. /me) to avoid infinite loops if handled gracefully
+            if (!error.config.url?.endsWith('/auth/me')) {
+                // The Context will handle redirect
+            }
+        }
+
+        return Promise.reject(error);
+    }
+);
+
+// Authentication
+export const login = async (username: string, password: string): Promise<AuthResponse> => {
+    try {
+        const response = await api.post<AuthResponse>('/auth/login', { username, password });
         return response.data;
-    } catch (error: any) {
-        return { success: false, message: error.response?.data?.message || 'Login failed' };
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            return error.response.data as AuthResponse;
+        }
+        return { success: false, message: 'Login failed' };
     }
 };
 
@@ -46,48 +94,63 @@ export const getCurrentUser = async (): Promise<{ authenticated: boolean; user?:
     }
 };
 
-export const registerAdmin = async (data: any): Promise<{ success: boolean; message: string }> => {
+export const registerAdmin = async (data: any): Promise<GenericResponse> => {
     try {
-        const response = await api.post('/auth/register', data);
+        const response = await api.post<GenericResponse>('/auth/register', data);
         return response.data;
-    } catch (error: any) {
-        return { success: false, message: error.response?.data?.message || 'Registration failed' };
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            return error.response.data as GenericResponse;
+        }
+        return { success: false, message: 'Registration failed' };
     }
 };
 
-export const getSecurityQuestion = async (username: string): Promise<{ success: boolean; question?: string; message?: string }> => {
+export const getSecurityQuestion = async (username: string): Promise<SecurityQuestionResponse> => {
     try {
-        const response = await api.post('/auth/security-task', { username });
+        const response = await api.post<SecurityQuestionResponse>('/auth/security-task', { username });
         return response.data;
-    } catch (error: any) {
-        return { success: false, message: error.response?.data?.message || 'User not found' };
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            return error.response.data as SecurityQuestionResponse;
+        }
+        return { success: false, message: 'User not found' };
     }
 };
 
-export const resetPassword = async (data: any): Promise<{ success: boolean; message: string }> => {
+export const resetPassword = async (data: any): Promise<GenericResponse> => {
     try {
-        const response = await api.post('/auth/reset-password', data);
+        const response = await api.post<GenericResponse>('/auth/reset-password', data);
         return response.data;
-    } catch (error: any) {
-        return { success: false, message: error.response?.data?.message || 'Reset failed' };
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            return error.response.data as GenericResponse;
+        }
+        return { success: false, message: 'Reset failed' };
     }
 };
 
-export const changePassword = async (data: any): Promise<{ success: boolean; message: string }> => {
+export const changePassword = async (data: any): Promise<GenericResponse> => {
     try {
-        const response = await api.post('/auth/change-password', data);
+        const response = await api.post<GenericResponse>('/auth/change-password', data);
         return response.data;
-    } catch (error: any) {
-        return { success: false, message: error.response?.data?.message || 'Change failed' };
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            return error.response.data as GenericResponse;
+        }
+        return { success: false, message: 'Change failed' };
     }
 };
 
-export const updateProfile = async (data: { username?: string; current_password: string; new_password?: string }): Promise<{ success: boolean; message: string; user?: AdminUser }> => {
+export const updateProfile = async (data: { username?: string; current_password: string; new_password?: string }): Promise<AuthResponse> => {
     try {
-        const response = await api.put('/auth/update-profile', data);
+        const response = await api.put<AuthResponse>('/auth/update-profile', data);
         return response.data;
-    } catch (error: any) {
-        return { success: false, message: error.response?.data?.message || 'Update failed' };
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            return error.response.data as AuthResponse;
+        }
+        return { success: false, message: 'Update failed' };
     }
 };
 
@@ -100,6 +163,7 @@ export const uploadFile = async (file: File): Promise<UploadFileResponse> => {
         withCredentials: true, // Added for authentication
         headers: {
             'Content-Type': 'multipart/form-data',
+            'X-CSRFToken': csrfToken,
         },
     });
 
@@ -168,32 +232,72 @@ export const getSessionSeating = async (session: string): Promise<SeatingResult>
 };
 
 // Download Excel
-import { open } from '@tauri-apps/plugin-shell';
-
 // Download Excel
 export const downloadHallWiseExcel = async (session?: string): Promise<void> => {
     const url = session
-        ? `${API_BASE_URL}/download/hall-wise?session=${encodeURIComponent(session)}`
-        : `${API_BASE_URL}/download/hall-wise`;
+        ? `/download/hall-wise?session=${encodeURIComponent(session)}`
+        : `/download/hall-wise`;
 
-    // Check if running in Tauri
-    if (window.__TAURI__) {
-        await open(url);
-    } else {
-        window.open(url, '_blank');
+    try {
+        const response = await api.get(url, { responseType: 'blob' });
+
+        // Create blob link to download
+        const href = window.URL.createObjectURL(response.data);
+        const link = document.createElement('a');
+        link.href = href;
+
+        // Extract filename from header or default
+        const contentDisposition = response.headers['content-disposition'];
+        let filename = 'Hall_Sketch.xlsx';
+        if (contentDisposition) {
+            const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+            if (fileNameMatch && fileNameMatch.length === 2)
+                filename = fileNameMatch[1];
+        }
+
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+
+        // Clean up
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(href);
+    } catch (error) {
+        console.error("Download failed", error);
+        throw error;
     }
 };
 
 export const downloadStudentWiseExcel = async (session?: string): Promise<void> => {
     const url = session
-        ? `${API_BASE_URL}/download/student-wise?session=${encodeURIComponent(session)}`
-        : `${API_BASE_URL}/download/student-wise`;
+        ? `/download/student-wise?session=${encodeURIComponent(session)}`
+        : `/download/student-wise`;
 
-    // Check if running in Tauri
-    if (window.__TAURI__) {
-        await open(url);
-    } else {
-        window.open(url, '_blank');
+    try {
+        // Use api instance which has credentials
+        const response = await api.get(url, { responseType: 'blob' });
+
+        const href = window.URL.createObjectURL(response.data);
+        const link = document.createElement('a');
+        link.href = href;
+
+        const contentDisposition = response.headers['content-disposition'];
+        let filename = 'Student_Allocation.xlsx';
+        if (contentDisposition) {
+            const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+            if (fileNameMatch && fileNameMatch.length === 2)
+                filename = fileNameMatch[1];
+        }
+
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(href);
+    } catch (error) {
+        console.error("Download failed", error);
+        throw error;
     }
 };
 

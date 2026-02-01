@@ -1,38 +1,54 @@
+import { Popover, PopoverButton, PopoverPanel } from '@headlessui/react';
 import { Sun, Moon, Shield, GraduationCap, Menu, X, LogOut as LogOutIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { logout } from '../../utils/api';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import gceeLogo from '../../assets/gcee-logo.png';
 import annaUnivLogo from '../../assets/anna-univ-logo.png';
+import { useAuth } from '../../context/AuthContext';
 
 const TopBar = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-    // Auth State
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-    useEffect(() => {
-        // Check on mount and route change
-        const checkAuth = () => {
-            setIsAuthenticated(localStorage.getItem('isAuthenticated') === 'true');
-        };
-        checkAuth();
-
-        // Also listen for storage events to sync across tabs
-        window.addEventListener('storage', checkAuth);
-        return () => window.removeEventListener('storage', checkAuth);
-    }, [location.pathname]); // Re-check when location changes (likely after login)
+    const { isAuthenticated, logout, user } = useAuth(); // Use AuthContext
+    const [theme, setTheme] = useState(() => {
+        const saved = localStorage.getItem('theme');
+        if (saved) return saved;
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            return 'dark';
+        }
+        return 'light';
+    });
 
     useEffect(() => {
+        // Disable transitions temporarily to prevent lag
+        const css = document.createElement('style');
+        css.appendChild(
+            document.createTextNode(
+                `* {
+                    -webkit-transition: none !important;
+                    -moz-transition: none !important;
+                    -o-transition: none !important;
+                    -ms-transition: none !important;
+                    transition: none !important;
+                }`
+            )
+        );
+        document.head.appendChild(css);
+
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');
         } else {
             document.documentElement.classList.remove('dark');
         }
         localStorage.setItem('theme', theme);
+
+        // Force reflow
+        window.getComputedStyle(document.body).opacity;
+
+        // Re-enable transitions
+        setTimeout(() => {
+            document.head.removeChild(css);
+        }, 0);
     }, [theme]);
 
     const toggleTheme = () => {
@@ -40,15 +56,7 @@ const TopBar = () => {
     };
 
     const handleLogout = async () => {
-        try {
-            await logout();
-        } catch (error) {
-            console.error("Logout failed on backend:", error);
-        }
-        localStorage.removeItem('isAuthenticated');
-        localStorage.removeItem('userRole'); // Clear role as well
-        localStorage.removeItem('username');
-        setIsAuthenticated(false);
+        await logout();
         navigate('/login');
     };
 
@@ -78,7 +86,7 @@ const TopBar = () => {
                     <button
                         onClick={() => {
                             if (isAuthenticated) {
-                                const role = localStorage.getItem('userRole');
+                                const role = user?.role;
                                 navigate(role === 'super_admin' ? '/super-admin' : '/admin');
                             } else {
                                 navigate('/login');
@@ -94,21 +102,56 @@ const TopBar = () => {
                     </button>
                 </div>
 
-                {/* Mobile Menu Button - Moved Here */}
-                <div className="md:hidden flex items-center">
-                    <button
-                        onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        className="p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                    >
-                        {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-                    </button>
-                </div>
+                {/* Mobile Menu Button - Replaced with Popover */}
+                <Popover className="md:hidden flex items-center relative">
+                    {({ open, close }) => (
+                        <>
+                            <PopoverButton
+                                className="p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                aria-label={open ? "Close menu" : "Open menu"}
+                            >
+                                {open ? <X size={24} /> : <Menu size={24} />}
+                            </PopoverButton>
+
+                            {/* Mobile Menu Dropdown */}
+                            {open && (
+                                <PopoverPanel static className="absolute top-12 left-0 w-60 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-xl p-2 rounded-2xl flex flex-col gap-1 z-50 animate-fade-in-down origin-top-left">
+                                    <button
+                                        onClick={() => { navigate('/'); close(); }}
+                                        className={`p-3 rounded-xl flex items-center gap-3 transition-colors w-full text-left ${location.pathname === '/' ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                                    >
+                                        <GraduationCap size={20} />
+                                        <span className="font-medium">Student Dashboard</span>
+                                    </button>
+                                    <button
+                                        onClick={() => { navigate('/admin'); close(); }}
+                                        className={`p-3 rounded-xl flex items-center gap-3 transition-colors w-full text-left ${location.pathname.startsWith('/admin') ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                                    >
+                                        <Shield size={20} />
+                                        <span className="font-medium">Admin Dashboard</span>
+                                    </button>
+
+                                    {isAuthenticated && (
+                                        <button
+                                            onClick={() => { handleLogout(); close(); }}
+                                            className="p-3 rounded-xl flex items-center gap-3 transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 w-full text-left"
+                                        >
+                                            <LogOutIcon size={20} />
+                                            <span className="font-medium">Logout</span>
+                                        </button>
+                                    )}
+                                </PopoverPanel>
+                            )}
+                        </>
+                    )}
+                </Popover>
             </div>
 
             {/* Center: Title */}
-            <div
+            <Link
+                to="/"
                 className="hidden xl:flex flex-col items-center text-center cursor-pointer group justify-self-center mx-4"
-                onClick={() => navigate('/')}
+                aria-label="Go to Home"
             >
                 <h1 className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 uppercase tracking-wide leading-tight px-2 group-hover:scale-[1.02] transition-transform">
                     Government College of Engineering, Erode
@@ -116,16 +159,17 @@ const TopBar = () => {
                 <h2 className="text-sm md:text-lg font-semibold text-primary-600 dark:text-primary-400 mt-1">
                     University Exam Hall Allocation
                 </h2>
-            </div>
+            </Link>
 
             {/* Center Mobile: Title - stays within grid column, no absolute */}
-            <div
+            <Link
+                to="/"
                 className="xl:hidden flex flex-col items-center text-center cursor-pointer justify-self-center overflow-hidden"
-                onClick={() => navigate('/')}
+                aria-label="Go to Home"
             >
                 <h1 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 dark:text-white leading-tight truncate max-w-[120px] sm:max-w-[180px] md:max-w-[220px]">GCE Erode</h1>
                 <h2 className="text-[9px] sm:text-[10px] text-primary-600 dark:text-primary-400 truncate max-w-[120px] sm:max-w-[180px] md:max-w-[220px]">Exam Hall Allocator</h2>
-            </div>
+            </Link>
 
             {/* Right: GCEE Logo + Controls */}
             <div className="flex items-center gap-2 md:gap-6 justify-self-end">
@@ -149,6 +193,7 @@ const TopBar = () => {
                     onClick={toggleTheme}
                     className="p-2 md:p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors bg-white/50 dark:bg-black/20 backdrop-blur-sm shadow-sm"
                     title="Toggle Theme"
+                    aria-label={theme === 'dark' ? "Switch to light mode" : "Switch to dark mode"}
                 >
                     {theme === 'dark' ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} />}
                 </button>
@@ -167,37 +212,8 @@ const TopBar = () => {
                 </div>
             </div>
 
-            {/* Mobile Menu Dropdown */}
-            {isMenuOpen && (
-                <div className="absolute top-[4.5rem] left-16 w-60 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-xl p-2 rounded-2xl md:hidden flex flex-col gap-1 z-50 animate-fade-in-down origin-top-left">
-                    <button
-                        onClick={() => { navigate('/'); setIsMenuOpen(false); }}
-                        className={`p-3 rounded-xl flex items-center gap-3 transition-colors ${location.pathname === '/' ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-                    >
-                        <GraduationCap size={20} />
-                        <span className="font-medium">Student Dashboard</span>
-                    </button>
-                    <button
-                        onClick={() => { navigate('/admin'); setIsMenuOpen(false); }}
-                        className={`p-3 rounded-xl flex items-center gap-3 transition-colors ${location.pathname.startsWith('/admin') ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-                    >
-                        <Shield size={20} />
-                        <span className="font-medium">Admin Dashboard</span>
-                    </button>
 
-                    {isAuthenticated && (
-                        <button
-                            onClick={() => { handleLogout(); setIsMenuOpen(false); }}
-                            className="p-3 rounded-xl flex items-center gap-3 transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10"
-                        >
-                            <LogOutIcon size={20} />
-                            <span className="font-medium">Logout</span>
-                        </button>
-                    )}
-                </div>
-            )}
         </div>
     );
 };
-
 export default TopBar;

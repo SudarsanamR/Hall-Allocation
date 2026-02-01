@@ -1,4 +1,4 @@
-import React from 'react';
+import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 
 interface ProtectedRouteProps {
@@ -7,16 +7,20 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-    const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-    const userRole = localStorage.getItem('userRole');
+    const { isAuthenticated, user, isLoading } = useAuth();
 
-    if (!isAuthenticated) {
+    if (isLoading) {
+        // You might want a loading spinner here
+        return <div className="flex h-screen items-center justify-center">Loading...</div>;
+    }
+
+    if (!isAuthenticated || !user) {
         return <Navigate to="/login" replace />;
     }
 
-    if (allowedRoles && userRole && !allowedRoles.includes(userRole)) {
-        // Redirect based on role if trying to access unauthorized page
-        if (userRole === 'super_admin') {
+    if (allowedRoles && !allowedRoles.includes(user.role)) {
+        // Redirect based on role
+        if (user.role === 'super_admin') {
             return <Navigate to="/super-admin" replace />;
         } else {
             return <Navigate to="/admin" replace />;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo, useCallback } from 'react';
 import { Edit2, Trash2, Plus, GripVertical, CheckSquare, Square, Settings, Grid } from 'lucide-react';
 import {
     DndContext,
@@ -21,6 +21,7 @@ import {
     rectSortingStrategy
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { reorderHalls, updateHallCapacityBulk, updateHallDimensionsBulk } from '../../utils/api';
 import type { Hall } from '../../types';
 
@@ -33,7 +34,7 @@ interface HallManagerProps {
 }
 
 // 1. Sortable Hall Item
-const SortableHall = ({
+const SortableHall = memo(({
     hall,
     onEdit,
     deleteConfirm,
@@ -90,6 +91,7 @@ const SortableHall = ({
                         <button
                             onClick={() => onToggleSelect(hall.id)}
                             className="text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
+                            aria-label={isSelected ? `Deselect ${hall.name}` : `Select ${hall.name}`}
                         >
                             {isSelected ? <CheckSquare size={18} className="text-primary-600 dark:text-primary-400" /> : <Square size={18} />}
                         </button>
@@ -109,6 +111,7 @@ const SortableHall = ({
                         onClick={() => onEdit(hall)}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-blue-400 dark:hover:bg-blue-900/20"
                         title="Edit hall"
+                        aria-label={`Edit ${hall.name}`}
                     >
                         <Edit2 size={16} />
                     </button>
@@ -119,6 +122,7 @@ const SortableHall = ({
                             : 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
                             }`}
                         title={deleteConfirm === hall.id ? 'Click again to confirm' : 'Delete hall'}
+                        aria-label={deleteConfirm === hall.id ? 'Confirm delete hall' : `Delete ${hall.name}`}
                     >
                         <Trash2 size={16} />
                     </button>
@@ -126,10 +130,10 @@ const SortableHall = ({
             </div>
         </div>
     );
-};
+});
 
 // 2. Sortable Block (Which contains Halls)
-const SortableBlock = ({
+const SortableBlock = memo(({
     block,
     halls,
     onEdit,
@@ -186,6 +190,7 @@ const SortableBlock = ({
                     onClick={() => onSelectAllInBlock(blockHallIds)}
                     className="text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                     title="Select/Deselect all in block"
+                    aria-label={allSelected ? `Deselect all halls in ${block}` : `Select all halls in ${block}`}
                 >
                     {allSelected ? <CheckSquare size={20} className="text-primary-600 dark:text-primary-400" /> : <Square size={20} />}
                 </button>
@@ -215,7 +220,7 @@ const SortableBlock = ({
             </SortableContext>
         </div>
     );
-};
+});
 
 // 3. Main HallManager Component
 const HallManager = ({ halls, onEdit, onDelete, onAdd, onRefresh }: HallManagerProps) => {
@@ -264,20 +269,26 @@ const HallManager = ({ halls, onEdit, onDelete, onAdd, onRefresh }: HallManagerP
     }, [halls]);
 
     // Bulk Handlers
-    const handleToggleSelect = (id: string) => {
+    const handleToggleSelect = useCallback((id: string) => {
         setSelectedHalls(prev =>
             prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
         );
-    };
+    }, []);
 
-    const handleSelectAllInBlock = (ids: string[]) => {
-        const allSelected = ids.every(id => selectedHalls.includes(id));
-        if (allSelected) {
-            setSelectedHalls(prev => prev.filter(id => !ids.includes(id)));
-        } else {
-            setSelectedHalls(prev => [...new Set([...prev, ...ids])]);
-        }
-    };
+    const handleSelectAllInBlock = useCallback((ids: string[]) => {
+        // We need to check current state, so valid to use functional update or dependency?
+        // Functional update with checking inclusion is tricky because we need to know if ALL are selected.
+        // Better to pass the logic or use dependency.
+        // Given 'selectedHalls' is needed to decide toggle on/off:
+        setSelectedHalls(prev => {
+            const allSelected = ids.every(id => prev.includes(id));
+            if (allSelected) {
+                return prev.filter(id => !ids.includes(id));
+            } else {
+                return [...new Set([...prev, ...ids])];
+            }
+        });
+    }, []);
 
     const handleBulkUpdate = async () => {
         if (selectedHalls.length === 0) return;
@@ -381,15 +392,20 @@ const HallManager = ({ halls, onEdit, onDelete, onAdd, onRefresh }: HallManagerP
         }
     };
 
-    const handleDelete = (id: string) => {
-        if (deleteConfirm === id) {
-            onDelete(id);
-            setDeleteConfirm(null);
-        } else {
-            setDeleteConfirm(id);
-            setTimeout(() => setDeleteConfirm(null), 3000);
-        }
-    };
+    const handleDelete = useCallback((id: string) => {
+        // We can't easily access deleteConfirm state inside callback without dependency.
+        // But we can use functional update for setDeleteConfirm? No, we need to read it.
+        // Actually, we can just let it depend on deleteConfirm. It changes rarely.
+        setDeleteConfirm(prev => {
+            if (prev === id) {
+                onDelete(id);
+                return null;
+            } else {
+                setTimeout(() => setDeleteConfirm(null), 3000);
+                return id;
+            }
+        });
+    }, [onDelete]);
 
     // Helper to get halls for a block (from local state)
     const getBlockHalls = (block: string) => localHalls.filter(h => h.block === block);
@@ -427,23 +443,26 @@ const HallManager = ({ halls, onEdit, onDelete, onAdd, onRefresh }: HallManagerP
             )}
 
             {/* Bulk Capacity Modal */}
-            {showBulkCapacity && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-scale-in">
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            <Dialog open={showBulkCapacity} onClose={() => setShowBulkCapacity(false)} className="relative z-50">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true" />
+                <div className="fixed inset-0 flex items-center justify-center p-4">
+                    <DialogPanel className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-scale-in">
+                        <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white mb-4">
                             Set Capacity for {selectedHalls.length} Halls
-                        </h3>
+                        </DialogTitle>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                <label htmlFor="bulkCapacity" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     New Max Capacity
                                 </label>
                                 <input
+                                    id="bulkCapacity"
                                     type="number"
                                     value={bulkCapacityValue}
                                     onChange={(e) => setBulkCapacityValue(parseInt(e.target.value) || 0)}
                                     className="input-field"
                                     min={1}
+                                    autoFocus
                                 />
                             </div>
                             <div className="flex gap-3">
@@ -461,36 +480,40 @@ const HallManager = ({ halls, onEdit, onDelete, onAdd, onRefresh }: HallManagerP
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </DialogPanel>
                 </div>
-            )}
+            </Dialog>
 
             {/* Bulk Dimensions Modal */}
-            {showBulkDimensions && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-scale-in">
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            <Dialog open={showBulkDimensions} onClose={() => setShowBulkDimensions(false)} className="relative z-50">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true" />
+                <div className="fixed inset-0 flex items-center justify-center p-4">
+                    <DialogPanel className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-scale-in">
+                        <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white mb-4">
                             Set Dimensions for {selectedHalls.length} Halls
-                        </h3>
+                        </DialogTitle>
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <label htmlFor="bulkRows" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Rows
                                     </label>
                                     <input
+                                        id="bulkRows"
                                         type="number"
                                         value={bulkRowsValue}
                                         onChange={(e) => setBulkRowsValue(parseInt(e.target.value) || 1)}
                                         className="input-field"
                                         min={1}
+                                        autoFocus
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <label htmlFor="bulkCols" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Columns
                                     </label>
                                     <input
+                                        id="bulkCols"
                                         type="number"
                                         value={bulkColumnsValue}
                                         onChange={(e) => setBulkColumnsValue(parseInt(e.target.value) || 1)}
@@ -517,9 +540,9 @@ const HallManager = ({ halls, onEdit, onDelete, onAdd, onRefresh }: HallManagerP
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </DialogPanel>
                 </div>
-            )}
+            </Dialog>
 
             {/* Header */}
             <div className="flex items-center justify-between">

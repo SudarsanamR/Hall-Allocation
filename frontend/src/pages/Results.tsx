@@ -78,6 +78,7 @@ const Results = () => {
                                     : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                                 }
                             `}
+                            aria-current={selectedSession === session}
                         >
                             {session.replace('_', ' ')}
                         </button>
@@ -100,6 +101,7 @@ const Results = () => {
                     <button
                         onClick={handleDownloadHall}
                         className="w-full flex items-center justify-center gap-2 btn-secondary border-green-200 text-green-700 hover:bg-green-50"
+                        aria-label={`Download Hall Sketch for ${selectedSession.replace('_', ' ')}`}
                     >
                         <Download size={20} />
                         Download {selectedSession.replace('_', ' ')}
@@ -120,6 +122,7 @@ const Results = () => {
                     <button
                         onClick={handleDownloadStudent}
                         className="w-full flex items-center justify-center gap-2 btn-secondary border-blue-200 text-blue-700 hover:bg-blue-50"
+                        aria-label={`Download Student List for ${selectedSession.replace('_', ' ')}`}
                     >
                         <Download size={20} />
                         Download {selectedSession.replace('_', ' ')}
