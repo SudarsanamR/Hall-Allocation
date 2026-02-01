@@ -203,5 +203,11 @@ def create_app():
         }
         Swagger(app, config=swagger_config, template=swagger_template)
     
+    # Properly handle headers behind a proxy (like Render's load balancer)
+    if is_production:
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        # Trust the X-Forwarded-* headers set by Render
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+    
     return app
 
