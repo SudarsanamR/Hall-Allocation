@@ -33,7 +33,7 @@ def create_app():
     # CORS Configuration - Stricter in production
     if is_production:
         allowed_origins = [
-            os.environ.get('FRONTEND_URL', 'https://gcee-hall-allocation.vercel.app'),
+            os.environ.get('FRONTEND_URL', 'https://gcee-examhall.vercel.app'),
         ]
     else:
         allowed_origins = [
