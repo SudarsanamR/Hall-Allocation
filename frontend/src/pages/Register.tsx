@@ -28,7 +28,7 @@ const Register = () => {
             });
 
             if (response.success) {
-                setSuccess(response.message);
+                setSuccess(response.message || 'Registration submitted for approval.');
                 // Reset form
                 setUsername('');
                 setPassword('');
