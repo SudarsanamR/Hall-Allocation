@@ -34,6 +34,7 @@ def create_app():
     if is_production:
         allowed_origins = [
             os.environ.get('FRONTEND_URL', 'https://gcee-examhall.vercel.app'),
+            'https://gcee-examhall.vercel.app'  # Explicitly add to override stale env var
         ]
     else:
         allowed_origins = [
