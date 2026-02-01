@@ -32,9 +32,10 @@ def create_app():
     
     # CORS Configuration - Stricter in production
     if is_production:
+        frontend_url = os.environ.get('FRONTEND_URL', 'https://gcee-examhall.vercel.app').rstrip('/')
         allowed_origins = [
-            os.environ.get('FRONTEND_URL', 'https://gcee-examhall.vercel.app'),
-            'https://gcee-examhall.vercel.app'  # Explicitly add to override stale env var
+            frontend_url,
+            'https://gcee-examhall.vercel.app'
         ]
     else:
         allowed_origins = [
