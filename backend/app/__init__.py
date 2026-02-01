@@ -38,7 +38,8 @@ def create_app():
             'https://gcee-examhall.vercel.app',
             # Tauri desktop app origins
             'tauri://localhost',
-            'https://tauri.localhost'
+            'https://tauri.localhost',
+            'http://tauri.localhost'
         ]
     else:
         allowed_origins = [
