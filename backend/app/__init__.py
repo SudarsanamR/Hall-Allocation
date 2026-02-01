@@ -113,20 +113,20 @@ def create_app():
         from app.services.logging_config import log_info, log_warning
         
         super_admin = Admin.query.filter_by(role='super_admin').first()
+        env_password = os.environ.get('SUPER_ADMIN_PASSWORD')
+        
         if not super_admin:
             log_info("Creating default Super Admin...")
             # Generate a secure random password or use env variable
-            default_password = os.environ.get('SUPER_ADMIN_PASSWORD') or secrets.token_urlsafe(16)
+            default_password = env_password or secrets.token_urlsafe(16)
             
-            if not os.environ.get('SUPER_ADMIN_PASSWORD'):
+            if not env_password:
                 # Bypass logger to prevent saving password to log files
                 # Print directly to stdout for immediate one-time visibility
                 print(f"\n{'!'*60}")
                 print(f"IMPORTANT: SUPER ADMIN DEFAULT PASSWORD: {default_password}")
                 print("Please change this immediately or set SUPER_ADMIN_PASSWORD env variable!")
                 print(f"{'!'*60}\n")
-            
-             # log_warning removed to protect secrets
             
             hashed_password = generate_password_hash(default_password)
             new_super_admin = Admin(
@@ -140,6 +140,14 @@ def create_app():
             db.session.add(new_super_admin)
             db.session.commit()
             log_info("Super Admin created.")
+        elif env_password:
+            # Update existing Super Admin password to match env variable
+            from werkzeug.security import check_password_hash
+            if not check_password_hash(super_admin.password_hash, env_password):
+                log_info("Updating Super Admin password to match environment variable...")
+                super_admin.password_hash = generate_password_hash(env_password)
+                db.session.commit()
+                log_info("Super Admin password updated.")
 
     # Register blueprints
     from app.routes import upload, halls, seating, auth, admin, csrf as csrf_bp
