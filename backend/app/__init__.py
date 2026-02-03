@@ -30,26 +30,27 @@ def create_app():
         raise RuntimeError("SECRET_KEY environment variable must be set in production!")
     app.config['SECRET_KEY'] = secret_key or 'dev-398f63ae02f252b8835ec812dfad9310d2e10078c0b6845b'
     
-    # CORS Configuration - Stricter in production
+    # CORS Configuration - Include both production and development origins
+    # Desktop app may run without FLASK_ENV set, so always include localhost
+    allowed_origins = [
+        # Development origins
+        "http://localhost:5173", 
+        "http://127.0.0.1:5173", 
+        "http://localhost:1420", 
+        "http://127.0.0.1:1420",
+        # Tauri desktop app origins
+        "tauri://localhost",
+        "https://tauri.localhost",
+        "http://tauri.localhost",
+    ]
+    
+    # Add production origins if in production
     if is_production:
         frontend_url = os.environ.get('FRONTEND_URL', 'https://gcee-examhall.vercel.app').rstrip('/')
-        allowed_origins = [
+        allowed_origins.extend([
             frontend_url,
             'https://gcee-examhall.vercel.app',
-            # Tauri desktop app origins
-            'tauri://localhost',
-            'https://tauri.localhost',
-            'http://tauri.localhost'
-        ]
-    else:
-        allowed_origins = [
-            "http://localhost:5173", 
-            "http://127.0.0.1:5173", 
-            "http://localhost:1420", 
-            "http://127.0.0.1:1420",
-            "tauri://localhost",
-            "https://tauri.localhost"
-        ]
+        ])
     
     # Allow CSRF token validation from trusted frontend origins (fixes "referrer does not match host")
     app.config['WTF_CSRF_TRUSTED_ORIGINS'] = allowed_origins

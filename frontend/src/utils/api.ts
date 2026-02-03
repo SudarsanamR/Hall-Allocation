@@ -83,7 +83,7 @@ export const login = async (username: string, password: string): Promise<AuthRes
             if (!error.response) {
                 return {
                     success: false,
-                    message: 'Network error: Unable to connect to the server. Please check your internet connection.'
+                    message: 'Network error: Unable to connect to the local server. Please restart the application.'
                 };
             }
             return error.response.data as AuthResponse;
