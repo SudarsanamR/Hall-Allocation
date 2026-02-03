@@ -1,12 +1,8 @@
 import axios from 'axios';
 import type { Hall, Student, UploadFileResponse, SeatingResult, AdminUser, AuditLog, HallFormData, GenericResponse, AuthResponse, SecurityQuestionResponse } from '../types';
 
-// Environment-aware API URL configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL ||
-    (import.meta.env.PROD
-        ? 'https://hall-allocation.onrender.com/api'
-        : 'http://localhost:5001/api'
-    );
+// Localhost-only API URL (Tauri desktop app - offline mode)
+const API_BASE_URL = 'http://localhost:5001/api';
 
 // Only log in development
 if (import.meta.env.DEV) {
@@ -47,7 +43,7 @@ api.interceptors.response.use(
         if (!error.response) {
             // Dispatch event for components to show network status
             window.dispatchEvent(new CustomEvent('network:error', {
-                detail: { message: 'Unable to connect to the server. Please check your internet connection.' }
+                detail: { message: 'Unable to connect to the local server. Please restart the application.' }
             }));
         }
 

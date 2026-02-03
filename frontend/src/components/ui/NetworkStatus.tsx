@@ -40,7 +40,7 @@ const NetworkStatus = () => {
     }
 
     const message = !isOnline
-        ? 'No internet connection. Please check your network.'
+        ? 'Local server connection issue. Please restart the application.'
         : networkError;
 
     return (

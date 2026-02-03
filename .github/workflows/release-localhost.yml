@@ -1,0 +1,77 @@
+name: Release Localhost
+on:
+  push:
+    tags:
+      - 'local-v*'
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [windows-latest]
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm install
+        working-directory: frontend
+
+      # Build the Backend
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11' 
+
+      - name: Install Backend Deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+        working-directory: backend
+        
+      - name: Build Backend EXE
+        run: |
+          pyinstaller --onefile --name backend --distpath dist --workpath build desktop_server.py
+        working-directory: backend
+
+      - name: Move Backend Binary
+        run: |
+          copy backend/dist/backend.exe frontend/src-tauri/backend-x86_64-pc-windows-msvc.exe
+
+      - name: Build Tauri App
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Hall Allocation (Localhost) ${{ github.ref_name }}'
+          releaseBody: |
+            **Offline-Only Desktop App**
+            
+            This version runs completely offline using the bundled local backend.
+            
+            **Default Super Admin Credentials:**
+            - Username: `SuperAdmin`
+            - Password: `GCEEAdmin@2026!`
+            
+            See the assets to download and install.
+          releaseDraft: false
+          prerelease: false
+          projectPath: frontend/

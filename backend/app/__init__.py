@@ -119,22 +119,19 @@ def create_app():
         super_admin = Admin.query.filter_by(role='super_admin').first()
         env_password = os.environ.get('SUPER_ADMIN_PASSWORD')
         
+        # Default credentials for offline/desktop mode
+        DEFAULT_SUPER_ADMIN_USERNAME = 'SuperAdmin'
+        DEFAULT_SUPER_ADMIN_PASSWORD = 'GCEEAdmin@2026!'
+        
         if not super_admin:
             log_info("Creating default Super Admin...")
-            # Generate a secure random password or use env variable
-            default_password = env_password or secrets.token_urlsafe(16)
-            
-            if not env_password:
-                # Bypass logger to prevent saving password to log files
-                # Print directly to stdout for immediate one-time visibility
-                print(f"\n{'!'*60}")
-                print(f"IMPORTANT: SUPER ADMIN DEFAULT PASSWORD: {default_password}")
-                print("Please change this immediately or set SUPER_ADMIN_PASSWORD env variable!")
-                print(f"{'!'*60}\n")
+            # Use env variable if set, otherwise use hardcoded default for offline mode
+            default_password = env_password or DEFAULT_SUPER_ADMIN_PASSWORD
+            default_username = os.environ.get('SUPER_ADMIN_USERNAME', DEFAULT_SUPER_ADMIN_USERNAME)
             
             hashed_password = generate_password_hash(default_password)
             new_super_admin = Admin(
-                username=os.environ.get('SUPER_ADMIN_USERNAME', 'SuperAdmin'),
+                username=default_username,
                 password_hash=hashed_password,
                 role='super_admin',
                 is_verified=True,

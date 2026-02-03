@@ -20,12 +20,12 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:5001 http://127.0.0.1:5001 https://hall-allocation-7n1u.onrender.com"
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:5001 http://127.0.0.1:5001"
     }
   },
   "plugins": {
     "updater": {
-      "active": true,
+      "active": false,
       "endpoints": [
         "https://github.com/SudarsanamR/Hall-Allocation/releases/latest/download/latest.json"
       ],
