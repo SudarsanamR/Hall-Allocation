@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { Hall, Student, UploadFileResponse, SeatingResult, AdminUser, AuditLog, HallFormData, GenericResponse, AuthResponse, SecurityQuestionResponse } from '../types';
 
 // Localhost-only API URL (Tauri desktop app - offline mode)
-const API_BASE_URL = 'http://localhost:5001/api';
+const API_BASE_URL = 'http://127.0.0.1:5001/api';
 
 // Only log in development
 if (import.meta.env.DEV) {
