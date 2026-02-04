@@ -64,24 +64,19 @@ def create_app():
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     }})
     
-    # Rate Limiting - More lenient for offline desktop mode
-    # In production (Render), stricter limits apply
-    # In offline/desktop mode, we can be more lenient since it's single-user
+    # Rate Limiting - Only enable in production
+    # For offline desktop app, rate limiting is unnecessary and causes issues
     if is_production:
-        rate_limits = ["200 per day", "50 per hour"]
+        limiter = Limiter(
+            app=app,
+            key_func=get_remote_address,
+            default_limits=["200 per day", "50 per hour"],
+            storage_uri="memory://"
+        )
+        app.limiter = limiter
     else:
-        # More lenient for offline desktop app
-        rate_limits = ["10000 per day", "1000 per hour"]
-    
-    limiter = Limiter(
-        app=app,
-        key_func=get_remote_address,
-        default_limits=rate_limits,
-        storage_uri="memory://"
-    )
-    
-    # Store limiter on app for use in routes
-    app.limiter = limiter
+        # No rate limiting for offline desktop app
+        app.limiter = None
     
     # Database Config
     database_url = os.environ.get('DATABASE_URL', 'sqlite:///app.db')
