@@ -1,8 +1,8 @@
 import sys
 import os
 import logging
-import time
-from logging.handlers import RotatingFileHandler
+import atexit
+import signal
 
 # Define AppData directory for logs, uploads, and database
 app_name = "GCEE Exam Hall Allotment"
@@ -27,6 +27,7 @@ sys.stdout = open(os.path.join(app_data_dir, "stdout.log"), "w", buffering=1)
 sys.stderr = open(os.path.join(app_data_dir, "stderr.log"), "w", buffering=1)
 
 logger.info(f"Starting backend... AppData Dir: {app_data_dir}")
+logger.info(f"Process ID: {os.getpid()}")
 
 # Add current dir to path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -37,6 +38,25 @@ logger.info(f"Current Dir: {current_dir}")
 db_path = os.path.join(app_data_dir, "app.db")
 os.environ['DATABASE_URL'] = f'sqlite:///{db_path}'
 logger.info(f"Database path set to: {db_path}")
+
+def cleanup():
+    """Cleanup function called on exit"""
+    logger.info("Backend cleanup - shutting down...")
+
+atexit.register(cleanup)
+
+# Handle termination signals gracefully
+def signal_handler(signum, frame):
+    logger.info(f"Received signal {signum}, shutting down...")
+    sys.exit(0)
+
+if sys.platform == "win32":
+    # On Windows, handle CTRL+C and CTRL+BREAK
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGBREAK, signal_handler)
+else:
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
 
 try:
     from app import create_app
@@ -50,56 +70,6 @@ try:
     logger.info(f"Upload Folder set to: {upload_folder}")
 
     if __name__ == '__main__':
-        # Parent process monitoring with better handling for PyInstaller
-        import threading
-        import select
-        
-        def monitor_parent():
-            """
-            Monitor if Tauri parent process is still alive.
-            When Tauri closes, stdin will be closed, triggering shutdown.
-            """
-            try:
-                # Wait a bit to let the server start properly
-                time.sleep(2)
-                
-                # Check if running as frozen exe (PyInstaller)
-                if getattr(sys, 'frozen', False):
-                    # For frozen app, use a different approach
-                    # Check periodically if stdin is closed
-                    while True:
-                        try:
-                            # Try to read with timeout
-                            if sys.platform == "win32":
-                                import msvcrt
-                                # On Windows, check if parent process handle is still valid
-                                # by trying to read stdin (will fail if parent closed)
-                                time.sleep(1)
-                                # Check if stdin is still connected
-                                if sys.stdin.closed:
-                                    break
-                            else:
-                                # On Unix, use select
-                                readable, _, _ = select.select([sys.stdin], [], [], 1.0)
-                                if readable:
-                                    data = sys.stdin.read(1)
-                                    if not data:  # EOF - parent closed
-                                        break
-                        except Exception:
-                            break
-                else:
-                    # For development, blocking read
-                    sys.stdin.read()
-            except Exception as e:
-                logger.info(f"Parent monitor exception: {e}")
-            
-            logger.info("Parent process closed. Shutting down...")
-            os._exit(0)
-        
-        # Start parent monitoring in background (daemon thread will be killed when main exits)
-        monitor_thread = threading.Thread(target=monitor_parent, daemon=True)
-        monitor_thread.start()
-
         logger.info("Starting Flask server on port 5001")
         # Use threaded mode for better handling
         app.run(debug=False, host='127.0.0.1', port=5001, threaded=True)
