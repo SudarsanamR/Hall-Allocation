@@ -86,10 +86,15 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
-    # Session Cookie Config - Secure in production
-    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax' if not is_production else 'None'
-    app.config['SESSION_COOKIE_SECURE'] = is_production  # True in production (HTTPS)
+    # Session Cookie Config
+    # For offline Tauri app, we need SameSite=None to allow cross-origin cookies
+    # (tauri://localhost making requests to http://127.0.0.1:5001)
+    # Note: SameSite=None normally requires Secure=True, but browsers typically
+    # allow this exception for localhost
+    app.config['SESSION_COOKIE_SAMESITE'] = 'None'  # Allow cross-origin
+    app.config['SESSION_COOKIE_SECURE'] = is_production  # Only HTTPS in production
     app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_PATH'] = '/'
 
     # Initialize Extensions
     from app.extensions import db, compress
