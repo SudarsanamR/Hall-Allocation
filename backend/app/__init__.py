@@ -167,13 +167,14 @@ def create_app():
                 log_info("Super Admin password updated.")
 
     # Register blueprints
-    from app.routes import upload, halls, seating, auth, admin, csrf as csrf_bp
+    from app.routes import upload, halls, seating, auth, admin, csrf as csrf_bp, config
     app.register_blueprint(upload.bp)
     app.register_blueprint(halls.bp)
     app.register_blueprint(seating.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(admin.bp)
     app.register_blueprint(csrf_bp.bp)
+    app.register_blueprint(config.bp)
     
     # Error Handlers
     from flask_wtf.csrf import CSRFError

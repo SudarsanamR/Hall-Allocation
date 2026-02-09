@@ -367,3 +367,28 @@ export const clearAuditLogs = async (): Promise<void> => {
     const response = await api.delete('/admin/logs');
     return response.data;
 };
+
+// Subject Configuration
+export interface SubjectConfig {
+    subject_code: string;
+    is_default: boolean;
+}
+
+export interface SubjectConfigsResponse {
+    success: boolean;
+    priority_subjects: SubjectConfig[];
+    drawing_subjects: SubjectConfig[];
+}
+
+export const getSubjectConfigs = async (): Promise<SubjectConfigsResponse> => {
+    const response = await api.get('/config/subjects');
+    return response.data;
+};
+
+export const addSubjectConfig = async (type: 'priority' | 'drawing', subject_code: string): Promise<void> => {
+    await api.post('/config/subjects', { type, subject_code });
+};
+
+export const deleteSubjectConfig = async (type: 'priority' | 'drawing', subject_code: string): Promise<void> => {
+    await api.delete(`/config/subjects/${subject_code}`, { params: { type } });
+};

@@ -102,3 +102,24 @@ class AuditLog(db.Model):
             'details': self.details,
             'timestamp': self.timestamp.isoformat() + 'Z'  # Append Z to indicate UTC
         }
+
+class SubjectConfig(db.Model):
+    """Store admin-configurable subject codes for priority (databook) and drawing subjects."""
+    id = db.Column(db.Integer, primary_key=True)
+    type = db.Column(db.String(50), nullable=False)  # 'priority' or 'drawing'
+    subject_code = db.Column(db.String(20), nullable=False)
+    is_default = db.Column(db.Boolean, default=False)  # True for built-in defaults
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        db.UniqueConstraint('type', 'subject_code', name='unique_type_subject'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'type': self.type,
+            'subject_code': self.subject_code,
+            'is_default': self.is_default,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }

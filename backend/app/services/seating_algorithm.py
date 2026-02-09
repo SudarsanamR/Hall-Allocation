@@ -23,23 +23,33 @@ from typing import List, Dict, Tuple, Optional
 from collections import defaultdict
 from app.models import Hall, Student, Seat, HallSeating, StudentAllocation, SeatingResult
 
-# --- CONFIGURATION ---
-DRAWING_SUBJECT_CODES = {
-    "AU3501", "ME3491", "GE3251", 
-    "PR8451", "ME8492", "ME8594", "GE8152", "ME25C01"
-}
+# --- DEFAULT CONFIGURATION ---
+# These are the built-in defaults are now managed in app.services.subject_service
+from app.services.subject_service import get_all_priority_subjects, get_all_drawing_subjects, DEFAULT_DRAWING_SUBJECTS, DEFAULT_PRIORITY_SUBJECTS
 
 DRAWING_HALL_NAMES = {
     "AH1", "AH2", "AH3", "T6A", "T6B", "AUD1", "AUD2", "AUD3", "AUD4"
 }
 
-PRIORITY_SUBJECT_CODES = {
-    "ME3591", "ME3691", "ME3391", "ME3491", "ME3451", "CME384", "GE3251", "CME385", "MA3251", 
-    "ST25120", "ST25103", "CE3601", "CE3501", "CE3405", "CE3403", "ST4201", "ST4102", 
-    "AU3301", "AU3701", "AU3501", "ST4202", "ST4091", "ME8651", "ME8792", "ME8071", 
-    "ME8493", "ME8693", "ME8492", "ME8391", "ME8593", "MA8452", "ME8594", "GE8152", 
-    "CE8601", "CE8501", "CE8404", "CE8604", "CE8703", "AT8503", "AT8602", "AT8601", "PR8451"
-}
+def get_priority_subject_codes():
+    """Get all priority subject codes (defaults + admin-configured)."""
+    try:
+        return get_all_priority_subjects()
+    except Exception:
+        # Fallback to defaults if database not available
+        return DEFAULT_PRIORITY_SUBJECTS
+
+def get_drawing_subject_codes():
+    """Get all drawing subject codes (defaults + admin-configured)."""
+    try:
+        return get_all_drawing_subjects()
+    except Exception:
+        # Fallback to defaults if database not available
+        return DEFAULT_DRAWING_SUBJECTS
+
+# For backward compatibility
+DRAWING_SUBJECT_CODES = DEFAULT_DRAWING_SUBJECTS
+PRIORITY_SUBJECT_CODES = DEFAULT_PRIORITY_SUBJECTS
 
 def allocate_session_strict(students: List[Student], halls: List[Hall]) -> SeatingResult:
     """
@@ -47,6 +57,8 @@ def allocate_session_strict(students: List[Student], halls: List[Hall]) -> Seati
     - Drawing Subjects -> ONLY in Drawing Halls.
     - Regular Subjects -> ONLY in Regular Halls.
     """
+    # Get current drawing codes (defaults + admin-configured)
+    drawing_codes = get_drawing_subject_codes()
     
     # 1. Split Students
     drawing_students = []
@@ -54,7 +66,7 @@ def allocate_session_strict(students: List[Student], halls: List[Hall]) -> Seati
     
     for s in students:
         # Check if subject code matches (case-insensitive just in case, though usually exact)
-        if s.subjectCode.strip().upper() in DRAWING_SUBJECT_CODES:
+        if s.subjectCode.strip().upper() in drawing_codes:
             drawing_students.append(s)
         else:
             regular_students.append(s)
@@ -132,11 +144,14 @@ def allocate_seats(students: List[Student], halls: List[Hall]) -> SeatingResult:
     if not halls:
         raise ValueError("No halls available")
 
+    # Get current priority codes (defaults + admin-configured)
+    priority_codes = get_priority_subject_codes()
+
     # Sort master list for consistency
     # Use valid natural sort for register numbers (try int, fallback to str)
     def natural_key(s: Student):
         reg = s.registerNumber.strip()
-        is_prio = s.subjectCode.strip().upper() in PRIORITY_SUBJECT_CODES
+        is_prio = s.subjectCode.strip().upper() in priority_codes
         # Sort key: (NOT Priority, Department, Subject, RegNo)
         # False < True. So (True, ...) makes Prio Last if we use (is_prio).
         # We want Prio First. So use (not is_prio) i.e. False for Prio (0), True for Non-Prio (1).
@@ -307,10 +322,13 @@ def _build_mixing_queue(
         # Filter active groups
         active_keys = [k for k in groups if groups[k]]
         
+        # Get current priority codes (defaults + admin-configured)
+        priority_codes = get_priority_subject_codes()
+        
         def priority_sort_key(k):
             # Check if next student is Priority
             next_student = groups[k][0]
-            is_prio = next_student.subjectCode.strip().upper() in PRIORITY_SUBJECT_CODES
+            is_prio = next_student.subjectCode.strip().upper() in priority_codes
             # Sort: Priority First (False < True), then Alphabetical Key
             return (not is_prio, k)
             

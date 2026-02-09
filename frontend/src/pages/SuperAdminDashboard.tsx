@@ -5,9 +5,10 @@ import {
 import { getAdmins, getAuditLogs, verifyAdmin, deleteAdmin, clearAuditLogs } from '../utils/api';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import type { AdminUser, AuditLog } from '../types';
+import ConfigurableSubjects from '../components/admin/ConfigurableSubjects';
 
 const SuperAdminDashboard = () => {
-    const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'settings'>('users');
+    const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'config' | 'settings'>('users');
     const [profileForm, setProfileForm] = useState({
         username: localStorage.getItem('username') || '',
         current_password: '',
@@ -20,7 +21,9 @@ const SuperAdminDashboard = () => {
 
     // Auto-refresh data on mount and tab switch
     useEffect(() => {
-        loadData();
+        if (activeTab === 'users' || activeTab === 'logs') {
+            loadData();
+        }
     }, [activeTab]);
 
     const loadData = async () => {
@@ -29,7 +32,7 @@ const SuperAdminDashboard = () => {
             if (activeTab === 'users') {
                 const data = await getAdmins();
                 setUsers(data);
-            } else {
+            } else if (activeTab === 'logs') {
                 const data = await getAuditLogs();
                 setLogs(data);
             }
@@ -93,7 +96,7 @@ const SuperAdminDashboard = () => {
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Super Admin Dashboard</h1>
-                    <p className="text-gray-500 dark:text-gray-400">Manage system access and audit logs</p>
+                    <p className="text-gray-500 dark:text-gray-400">Manage system access and configuration</p>
                 </div>
                 <div className="flex gap-2 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                     <button
@@ -117,6 +120,16 @@ const SuperAdminDashboard = () => {
                         Audit Logs
                     </button>
                     <button
+                        onClick={() => setActiveTab('config')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'config'
+                            ? 'bg-primary-100 text-primary-800'
+                            : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'}`}
+                        aria-current={activeTab === 'config' ? 'page' : undefined}
+                    >
+                        <Settings size={18} className="inline mr-2" />
+                        Configuration
+                    </button>
+                    <button
                         onClick={() => setActiveTab('settings')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'settings'
                             ? 'bg-primary-100 text-primary-800'
@@ -124,7 +137,7 @@ const SuperAdminDashboard = () => {
                         aria-current={activeTab === 'settings' ? 'page' : undefined}
                     >
                         <Settings size={18} className="inline mr-2" />
-                        Settings
+                        Profile
                     </button>
                 </div>
             </div>
@@ -261,6 +274,11 @@ const SuperAdminDashboard = () => {
                         </table>
                     </div>
                 </div>
+            )}
+
+            {/* Configuration Tab */}
+            {activeTab === 'config' && (
+                <ConfigurableSubjects />
             )}
 
             {activeTab === 'settings' && (
