@@ -3,7 +3,7 @@ from app.models.sql import Admin, db
 from werkzeug.security import check_password_hash, generate_password_hash
 from app.services.audit import log_action
 from datetime import datetime
-from app.decorators import login_required, role_required
+from app.decorators import login_required, role_required, generate_auth_token, get_current_user
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -38,9 +38,13 @@ def login():
         if not admin.is_verified:
             return jsonify({'success': False, 'message': 'Account pending approval from Super Admin'}), 403
             
+        # Set session (for production/web mode)
         session.permanent = True
         session['user_id'] = admin.id
         session['role'] = admin.role
+        
+        # Generate auth token (for offline desktop mode)
+        auth_token = generate_auth_token(admin.id, admin.role)
         
         admin.last_login = datetime.utcnow()
         db.session.commit()
@@ -49,7 +53,8 @@ def login():
         
         return jsonify({
             'success': True,
-            'user': admin.to_dict()
+            'user': admin.to_dict(),
+            'token': auth_token  # Token for offline mode
         }), 200
     
     return jsonify({'success': False, 'message': 'Invalid credentials'}), 401

@@ -12,15 +12,26 @@ if (import.meta.env.DEV) {
 const api = axios.create({
     baseURL: API_BASE_URL,
     timeout: 15000,
-    withCredentials: true, // Important for Sessions
+    withCredentials: true, // Keep for session-based auth as fallback
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
 let csrfToken: string | null = null;
+let authToken: string | null = null;  // Token for offline desktop mode
 
 export const getCsrfToken = () => csrfToken;
+export const getAuthToken = () => authToken;
+
+export const setAuthToken = (token: string | null) => {
+    authToken = token;
+    if (token) {
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+        delete api.defaults.headers.common['Authorization'];
+    }
+};
 
 export const fetchCsrfToken = async () => {
     try {
@@ -75,7 +86,11 @@ api.interceptors.response.use(
 // Authentication
 export const login = async (username: string, password: string): Promise<AuthResponse> => {
     try {
-        const response = await api.post<AuthResponse>('/auth/login', { username, password });
+        const response = await api.post<AuthResponse & { token?: string }>('/auth/login', { username, password });
+        // Store auth token for offline desktop mode
+        if (response.data.success && response.data.token) {
+            setAuthToken(response.data.token);
+        }
         return response.data;
     } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -93,6 +108,7 @@ export const login = async (username: string, password: string): Promise<AuthRes
 };
 
 export const logout = async (): Promise<void> => {
+    setAuthToken(null);  // Clear auth token
     await api.post('/auth/logout');
 };
 
