@@ -30,34 +30,41 @@ def create_app():
         raise RuntimeError("SECRET_KEY environment variable must be set in production!")
     app.config['SECRET_KEY'] = secret_key or 'dev-398f63ae02f252b8835ec812dfad9310d2e10078c0b6845b'
     
-    # CORS Configuration
-    # For offline desktop app, allow all origins since it's a local single-user app
+    # CORS Configuration - Include both production and development origins
+    # Desktop app may run without FLASK_ENV set, so always include localhost and Tauri origins
+    allowed_origins = [
+        # Development origins
+        "http://localhost:5173", 
+        "http://127.0.0.1:5173", 
+        "http://localhost:1420", 
+        "http://127.0.0.1:1420",
+        # Tauri desktop app origins (all possible variations)
+        "tauri://localhost",
+        "https://tauri.localhost",
+        "http://tauri.localhost",
+        # null origin (sometimes sent by file:// or opaque origins)
+        "null",
+    ]
+    
+    # Add production origins if in production
     if is_production:
-        allowed_origins = [
-            os.environ.get('FRONTEND_URL', 'https://gcee-examhall.vercel.app').rstrip('/'),
+        frontend_url = os.environ.get('FRONTEND_URL', 'https://gcee-examhall.vercel.app').rstrip('/')
+        allowed_origins.extend([
+            frontend_url,
             'https://gcee-examhall.vercel.app',
-            "tauri://localhost",
-            "https://tauri.localhost",
-        ]
-        CORS(app, resources={r"/*": {
-            "origins": allowed_origins,
-            "supports_credentials": True,
-            "allow_headers": ["Content-Type", "Authorization", "X-CSRFToken"],
-            "expose_headers": ["Content-Type", "Authorization"],
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-        }})
-    else:
-        # Fully permissive CORS for offline desktop mode
-        CORS(app, resources={r"/*": {
-            "origins": "*",  # Allow all origins
-            "supports_credentials": False,  # Required when using * origin
-            "allow_headers": ["Content-Type", "Authorization", "X-CSRFToken"],
-            "expose_headers": ["Content-Type", "Authorization"],
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-        }})
+        ])
     
     # Allow CSRF token validation from trusted frontend origins
-    app.config['WTF_CSRF_TRUSTED_ORIGINS'] = ["*"]
+    app.config['WTF_CSRF_TRUSTED_ORIGINS'] = allowed_origins
+    app.config['WTF_CSRF_SSL_STRICT'] = False
+    
+    CORS(app, resources={r"/*": {
+        "origins": allowed_origins,
+        "supports_credentials": True,
+        "allow_headers": ["Content-Type", "Authorization", "X-CSRFToken"],
+        "expose_headers": ["Content-Type", "Authorization"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    }})
     
     # Rate Limiting - Only enable in production
     # For offline desktop app, rate limiting is unnecessary and causes issues

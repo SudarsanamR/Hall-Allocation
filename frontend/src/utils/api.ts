@@ -12,8 +12,7 @@ if (import.meta.env.DEV) {
 const api = axios.create({
     baseURL: API_BASE_URL,
     timeout: 15000,
-    // Using token-based auth for offline mode, no credentials needed
-    withCredentials: false,
+    withCredentials: true, // Required for CORS with supports_credentials
     headers: {
         'Content-Type': 'application/json',
     },
