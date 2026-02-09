@@ -12,7 +12,8 @@ if (import.meta.env.DEV) {
 const api = axios.create({
     baseURL: API_BASE_URL,
     timeout: 15000,
-    withCredentials: true, // Keep for session-based auth as fallback
+    // Using token-based auth for offline mode, no credentials needed
+    withCredentials: false,
     headers: {
         'Content-Type': 'application/json',
     },
