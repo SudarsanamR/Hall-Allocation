@@ -125,7 +125,7 @@ def generate_seating():
 
         db.session.commit()
         
-        log_action(session['user_id'], 'GENERATE_SEATING', f'Generated seating for {len(results)} sessions')
+        log_action(request.current_user_id, 'GENERATE_SEATING', f'Generated seating for {len(results)} sessions')
 
         return jsonify({
             'success': True, 
@@ -161,7 +161,7 @@ def clear_allocations():
         Student.query.delete()
         db.session.commit()
         
-        log_action(session['user_id'], 'CLEAR_SEATING', 'Cleared all allocations and student data')
+        log_action(request.current_user_id, 'CLEAR_SEATING', 'Cleared all allocations and student data')
         
         return jsonify({'message': 'All allocations and student data cleared successfully'}), 200
     except Exception as e:

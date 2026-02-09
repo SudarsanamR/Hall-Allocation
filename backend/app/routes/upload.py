@@ -70,7 +70,7 @@ def upload_file():
         # Clean up file
         os.remove(file_path)
         
-        log_action(session['user_id'], 'UPLOAD_DATA', f'Uploaded {len(students)} students from {filename}')
+        log_action(request.current_user_id, 'UPLOAD_DATA', f'Uploaded {len(students)} students from {filename}')
         
         response = {
             'success': True,
@@ -119,6 +119,6 @@ def reset_data():
     Allocation.query.delete()
     db.session.commit()
     
-    log_action(session['user_id'], 'RESET_DATA', 'Cleared all student and allocation data')
+    log_action(request.current_user_id, 'RESET_DATA', 'Cleared all student and allocation data')
     
     return jsonify({'success': True, 'message': 'All data has been reset'}), 200
