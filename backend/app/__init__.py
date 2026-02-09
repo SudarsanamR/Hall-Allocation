@@ -99,8 +99,13 @@ def create_app():
     # Initialize Flask-Migrate
     migrate.init_app(app, db)
     
-    # Initialize CSRF Protection
-    csrf.init_app(app)
+    # Initialize CSRF Protection - Only in production
+    # Disabled for offline desktop mode due to session/cookie issues in Tauri webview
+    if is_production:
+        csrf.init_app(app)
+        app.config['WTF_CSRF_ENABLED'] = True
+    else:
+        app.config['WTF_CSRF_ENABLED'] = False
     
     # Create Tables (only in development, use migrations in production)
     with app.app_context():
