@@ -186,11 +186,12 @@ export const uploadFile = async (file: File): Promise<UploadFileResponse> => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await axios.post(`${API_BASE_URL}/upload`, formData, {
-        withCredentials: true, // Added for authentication
+    // Use api instance to include auth token, but need to override Content-Type for multipart
+    const response = await api.post('/upload', formData, {
         headers: {
             'Content-Type': 'multipart/form-data',
-            'X-CSRFToken': csrfToken,
+            // Ensure auth token is included (api interceptor adds it, but be explicit for safety)
+            ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
         },
     });
 
