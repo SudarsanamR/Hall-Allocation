@@ -23,14 +23,21 @@ const NetworkStatus = () => {
             setDismissed(false);
         };
 
+        // Clear network error when we get a successful response
+        const handleNetworkSuccess = () => {
+            setNetworkError(null);
+        };
+
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
         window.addEventListener('network:error', handleNetworkError as EventListener);
+        window.addEventListener('network:success', handleNetworkSuccess);
 
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
             window.removeEventListener('network:error', handleNetworkError as EventListener);
+            window.removeEventListener('network:success', handleNetworkSuccess);
         };
     }, []);
 

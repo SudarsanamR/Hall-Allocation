@@ -48,7 +48,11 @@ export const fetchCsrfToken = async () => {
 
 // Interceptors
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        // Clear any network error when we get a successful response
+        window.dispatchEvent(new CustomEvent('network:success'));
+        return response;
+    },
     async (error) => {
         // Network error (no internet, server down, etc.)
         if (!error.response) {
