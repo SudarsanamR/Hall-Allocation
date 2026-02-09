@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from app.models.sql import Admin, AuditLog, db
 from app.services.audit import log_action
+from app.decorators import get_current_user
 
 bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
@@ -8,13 +9,19 @@ bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 def restrict_access():
     if request.method == 'OPTIONS':
         return
-        
-    if 'user_id' not in session:
+    
+    # Use get_current_user which checks both session and Authorization token
+    user_id, role = get_current_user()
+    
+    if not user_id:
          return jsonify({'success': False, 'message': 'Not authenticated'}), 401
     
-    # We could optimize by storing role in session which we did in login
-    if session.get('role') != 'super_admin':
+    if role != 'super_admin':
         return jsonify({'success': False, 'message': 'Access denied'}), 403
+    
+    # Store for use in route handlers
+    request.current_user_id = user_id
+    request.current_user_role = role
 
 @bp.route('/users', methods=['GET'])
 def get_users():
@@ -34,7 +41,7 @@ def verify_user(user_id):
     user.is_verified = True
     db.session.commit()
     
-    log_action(session['user_id'], 'VERIFY_ADMIN', f'Verified admin {user.username}')
+    log_action(request.current_user_id, 'VERIFY_ADMIN', f'Verified admin {user.username}')
     
     return jsonify({'success': True, 'message': 'User verified'}), 200
 
@@ -50,7 +57,7 @@ def delete_user(user_id):
     db.session.delete(user)
     db.session.commit()
     
-    log_action(session['user_id'], 'DELETE_ADMIN', f'Deleted admin {user.username}')
+    log_action(request.current_user_id, 'DELETE_ADMIN', f'Deleted admin {user.username}')
     
     return jsonify({'success': True, 'message': 'User deleted'}), 200
 
@@ -65,7 +72,7 @@ def get_logs():
 
 @bp.route('/logs', methods=['DELETE'])
 def delete_logs():
-    if session.get('role') != 'super_admin':
+    if request.current_user_role != 'super_admin':
          return jsonify({'success': False, 'message': 'Access denied'}), 403
          
     try:
@@ -73,7 +80,7 @@ def delete_logs():
         db.session.commit()
         # We need to manually log this action since we just deleted all logs!
         # Re-adding a log entry for this action
-        log_action(session['user_id'], 'CLEAR_LOGS', f'Cleared previous audit logs')
+        log_action(request.current_user_id, 'CLEAR_LOGS', f'Cleared previous audit logs')
         
         return jsonify({'success': True, 'message': 'All logs cleared'}), 200
     except Exception as e:
