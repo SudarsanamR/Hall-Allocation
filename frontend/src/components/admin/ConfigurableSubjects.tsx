@@ -86,26 +86,23 @@ const ConfigurableSubjects = () => {
                         {prioritySubjects.map((subj) => (
                             <div
                                 key={subj.subject_code}
-                                className={`
-                                    flex justify-between items-center p-3 rounded-lg border
-                                    ${subj.is_default
-                                        ? 'bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700'
-                                        : 'bg-white border-orange-200 dark:bg-gray-900 dark:border-orange-900/50 shadow-sm'
-                                    }
-                                `}
+                                className="flex justify-between items-center p-3 rounded-lg border bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-sm"
                             >
-                                <span className="font-mono font-medium">{subj.subject_code}</span>
-                                {subj.is_default ? (
-                                    <span className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-500 rounded-full">Default</span>
-                                ) : (
-                                    <button
-                                        onClick={() => handleDelete('priority', subj.subject_code)}
-                                        className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-colors"
-                                        title="Remove custom code"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                )}
+                                <div className="flex items-center gap-2">
+                                    <span className="font-mono font-medium">{subj.subject_code}</span>
+                                    {subj.is_default && (
+                                        <span className="text-xs px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-300 rounded-full">
+                                            Default
+                                        </span>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={() => handleDelete('priority', subj.subject_code)}
+                                    className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-colors"
+                                    title="Remove code"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
                             </div>
                         ))}
                     </div>
@@ -145,26 +142,23 @@ const ConfigurableSubjects = () => {
                         {drawingSubjects.map((subj) => (
                             <div
                                 key={subj.subject_code}
-                                className={`
-                                    flex justify-between items-center p-3 rounded-lg border
-                                    ${subj.is_default
-                                        ? 'bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700'
-                                        : 'bg-white border-purple-200 dark:bg-gray-900 dark:border-purple-900/50 shadow-sm'
-                                    }
-                                `}
+                                className="flex justify-between items-center p-3 rounded-lg border bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-sm"
                             >
-                                <span className="font-mono font-medium">{subj.subject_code}</span>
-                                {subj.is_default ? (
-                                    <span className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-500 rounded-full">Default</span>
-                                ) : (
-                                    <button
-                                        onClick={() => handleDelete('drawing', subj.subject_code)}
-                                        className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-colors"
-                                        title="Remove custom code"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                )}
+                                <div className="flex items-center gap-2">
+                                    <span className="font-mono font-medium">{subj.subject_code}</span>
+                                    {subj.is_default && (
+                                        <span className="text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 rounded-full">
+                                            Default
+                                        </span>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={() => handleDelete('drawing', subj.subject_code)}
+                                    className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-colors"
+                                    title="Remove code"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
                             </div>
                         ))}
                     </div>

@@ -5,10 +5,9 @@ import {
 import { getAdmins, getAuditLogs, verifyAdmin, deleteAdmin, clearAuditLogs } from '../utils/api';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import type { AdminUser, AuditLog } from '../types';
-import ConfigurableSubjects from '../components/admin/ConfigurableSubjects';
 
 const SuperAdminDashboard = () => {
-    const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'config' | 'settings'>('users');
+    const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'settings'>('users');
     const [profileForm, setProfileForm] = useState({
         username: localStorage.getItem('username') || '',
         current_password: '',
@@ -118,16 +117,6 @@ const SuperAdminDashboard = () => {
                     >
                         <Activity size={18} className="inline mr-2" />
                         Audit Logs
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('config')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'config'
-                            ? 'bg-primary-100 text-primary-800'
-                            : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'}`}
-                        aria-current={activeTab === 'config' ? 'page' : undefined}
-                    >
-                        <Settings size={18} className="inline mr-2" />
-                        Configuration
                     </button>
                     <button
                         onClick={() => setActiveTab('settings')}
@@ -274,11 +263,6 @@ const SuperAdminDashboard = () => {
                         </table>
                     </div>
                 </div>
-            )}
-
-            {/* Configuration Tab */}
-            {activeTab === 'config' && (
-                <ConfigurableSubjects />
             )}
 
             {activeTab === 'settings' && (

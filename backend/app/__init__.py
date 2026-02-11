@@ -127,6 +127,10 @@ def create_app():
         from app.routes.halls import bootstrap_halls
         bootstrap_halls()
 
+        # Auto-seed default subject codes if empty
+        from app.services.subject_service import seed_default_subjects
+        seed_default_subjects()
+
         # Auto-seed Super Admin with secure password
         from app.models.sql import Admin
         from werkzeug.security import generate_password_hash
