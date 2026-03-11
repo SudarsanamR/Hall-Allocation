@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, Download, RefreshCw, LayoutGrid, Trash2, Settings } from 'lucide-react';
-import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, downloadStudentWiseExcel, getSessionSeating, clearAllocations, getSessions } from '../utils/api';
+import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, Download, RefreshCw, LayoutGrid, Trash2, Settings, Share2 } from 'lucide-react';
+import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, downloadStudentWiseExcel, getSessionSeating, clearAllocations, getSessions, exportAllocationsJSON } from '../utils/api';
 import type { SeatingResult, UploadFileResponse, Stats } from '../types';
 import SeatingGrid from '../components/seating/SeatingGrid';
 import StatCards from '../components/layout/StatCards';
@@ -593,6 +593,20 @@ const AdminDashboard = () => {
                                             >
                                                 <Download size={18} />
                                                 <span className="hidden sm:inline">Student List</span>
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        await exportAllocationsJSON();
+                                                    } catch (err) {
+                                                        setError('Failed to export allocations.');
+                                                    }
+                                                }}
+                                                className="btn-secondary flex items-center gap-2 py-2 px-4 text-sm"
+                                                title="Export JSON for student web viewer"
+                                            >
+                                                <Share2 size={18} />
+                                                <span className="hidden sm:inline">Export JSON</span>
                                             </button>
                                         </div>
                                     </div>

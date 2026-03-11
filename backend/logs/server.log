@@ -1,0 +1,6 @@
+2026-03-07 18:06:43,863 | [32mINFO[0m | ACTION: CLEAR_SEATING | Cleared all allocations and student data
+2026-03-11 20:32:14,152 | [32mINFO[0m | ACTION: CLEAR_SEATING | Cleared all allocations and student data
+2026-03-11 21:07:48,556 | [32mINFO[0m | ACTION: BULK_UPDATE_CAPACITY | Updated 2 halls to capacity 20
+2026-03-11 21:07:48,584 | [32mINFO[0m | ACTION: CLEAR_SEATING | Cleared all allocations and student data
+2026-03-11 21:09:48,953 | [32mINFO[0m | ACTION: BULK_UPDATE_CAPACITY | Updated 2 halls to capacity 20
+2026-03-11 21:09:48,995 | [32mINFO[0m | ACTION: CLEAR_SEATING | Cleared all allocations and student data

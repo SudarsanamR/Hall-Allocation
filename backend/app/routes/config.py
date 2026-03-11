@@ -3,7 +3,6 @@ Config Routes - Manage configurable subject codes
 """
 from flask import Blueprint, request, jsonify
 from app.models import db, SubjectConfig
-from app.decorators import role_required
 from app.services.subject_service import (
     get_all_priority_subjects, get_all_drawing_subjects,
     add_custom_subject_config, delete_subject_config
@@ -13,7 +12,6 @@ bp = Blueprint('config', __name__, url_prefix='/api/config')
 
 
 @bp.route('/subjects', methods=['GET'])
-@role_required(['admin', 'super_admin'])
 def get_subject_configs():
     """Get all configured subject codes (both defaults and custom)."""
     all_priority = SubjectConfig.query.filter_by(type='priority').all()
@@ -36,7 +34,6 @@ def get_subject_configs():
 
 
 @bp.route('/subjects', methods=['POST'])
-@role_required(['admin', 'super_admin'])
 def add_subject_config():
     """Add a new subject code configuration."""
     data = request.get_json()
@@ -64,7 +61,6 @@ def add_subject_config():
 
 
 @bp.route('/subjects/<subject_code>', methods=['DELETE'])
-@role_required(['admin', 'super_admin'])
 def delete_subject_config_route(subject_code):
     """Delete a subject code configuration (including defaults)."""
     subject_type = request.args.get('type')

@@ -1,0 +1,6 @@
+2026-03-07 18:06:43,863 | ACTION: CLEAR_SEATING | Cleared all allocations and student data
+2026-03-11 20:32:14,152 | ACTION: CLEAR_SEATING | Cleared all allocations and student data
+2026-03-11 21:07:48,556 | ACTION: BULK_UPDATE_CAPACITY | Updated 2 halls to capacity 20
+2026-03-11 21:07:48,584 | ACTION: CLEAR_SEATING | Cleared all allocations and student data
+2026-03-11 21:09:48,953 | ACTION: BULK_UPDATE_CAPACITY | Updated 2 halls to capacity 20
+2026-03-11 21:09:48,995 | ACTION: CLEAR_SEATING | Cleared all allocations and student data

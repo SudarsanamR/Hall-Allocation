@@ -1,18 +1,18 @@
 """
 Seating Route - Generate seating arrangements and download results
 """
-from flask import Blueprint, request, jsonify, send_file, session
-from app.services.audit import log_action
+from flask import Blueprint, request, jsonify, send_file
+from app.services.logging_config import log_action
 from app.models import db, Student, Hall, Allocation, SeatingResult, HallSeating, Seat
 from app.services import allocate_session_strict, generate_hall_wise_excel, generate_student_wise_excel
 from collections import defaultdict
-from app.decorators import role_required
+from datetime import datetime
 import uuid
+import json
 
 bp = Blueprint('seating', __name__, url_prefix='/api')
 
 @bp.route('/generate', methods=['POST'])
-@role_required(['admin', 'super_admin'])
 def generate_seating():
     """
     Generate seating arrangements for all sessions found in student data.
@@ -125,7 +125,7 @@ def generate_seating():
 
         db.session.commit()
         
-        log_action(request.current_user_id, 'GENERATE_SEATING', f'Generated seating for {len(results)} sessions')
+        log_action('GENERATE_SEATING', f'Generated seating for {len(results)} sessions')
 
         return jsonify({
             'success': True, 
@@ -137,7 +137,6 @@ def generate_seating():
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/sessions', methods=['GET'])
-@role_required(['admin', 'super_admin'])
 def get_sessions():
     """
     Get list of available sessions from existing allocations.
@@ -150,7 +149,6 @@ def get_sessions():
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/clear', methods=['DELETE'])
-@role_required(['admin', 'super_admin'])
 def clear_allocations():
     """
     Clear all seating allocations AND student data from the database.
@@ -161,7 +159,7 @@ def clear_allocations():
         Student.query.delete()
         db.session.commit()
         
-        log_action(request.current_user_id, 'CLEAR_SEATING', 'Cleared all allocations and student data')
+        log_action('CLEAR_SEATING', 'Cleared all allocations and student data')
         
         return jsonify({'message': 'All allocations and student data cleared successfully'}), 200
     except Exception as e:
@@ -169,7 +167,6 @@ def clear_allocations():
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/seating/<session_key>', methods=['GET'])
-@role_required(['admin', 'super_admin'])
 def get_session_seating(session_key):
     """
     Get detailed seating result for a specific session.
@@ -342,7 +339,6 @@ def reconstruct_seating_result(session_key):
         raise e
 
 @bp.route('/download/hall-wise', methods=['GET'])
-@role_required(['admin', 'super_admin'])
 def download_hall_wise():
     """Download hall-wise seating Excel file for a specific session"""
     session_key = request.args.get('session')
@@ -378,7 +374,6 @@ def download_hall_wise():
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/download/student-wise', methods=['GET'])
-@role_required(['admin', 'super_admin'])
 def download_student_wise():
     """Download student-wise allocation Excel file"""
     session_key = request.args.get('session')
@@ -506,3 +501,38 @@ def search_student():
         return jsonify({'error': 'No allocation found for this register number'}), 404
 
     return jsonify({'success': True, 'allocations': matches}), 200
+
+
+@bp.route('/export/allocations', methods=['GET'])
+def export_allocations():
+    """
+    Export all allocations as a downloadable JSON file.
+    Used to upload to the student web viewer (GitHub Pages).
+    """
+    try:
+        allocations = Allocation.query.all()
+        if not allocations:
+            return jsonify({'error': 'No allocations found. Generate seating first.'}), 404
+        
+        export_data = {
+            'generated_at': datetime.utcnow().isoformat(),
+            'sessions': sorted(list(set(a.session_key for a in allocations))),
+            'total_students': len(allocations),
+            'allocations': [
+                {
+                    'registerNumber': a.register_number,
+                    'hallName': a.hall_name,
+                    'seatNumber': a.seat_number,
+                    'session': a.session_key,
+                    'subject': a.subject_code,
+                    'department': a.department
+                }
+                for a in allocations
+            ]
+        }
+        
+        log_action('EXPORT_ALLOCATIONS', f'Exported {len(allocations)} allocations as JSON')
+        
+        return jsonify(export_data), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
