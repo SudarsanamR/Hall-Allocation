@@ -71,5 +71,4 @@ jobs:
             See the assets to download and install.
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
           projectPath: frontend/
