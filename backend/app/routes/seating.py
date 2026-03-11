@@ -111,7 +111,7 @@ def generate_seating():
                 'halls': halls_response,
                 'studentAllocation': [
                     {
-                        'registerNumber': sa.register_number,
+                        'registerNumber': sa.registerNumber,
                         'department': sa.department,
                         'subject': sa.subject,
                         'hallName': sa.hallName,
