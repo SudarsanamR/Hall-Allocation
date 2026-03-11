@@ -266,7 +266,7 @@ def reconstruct_seating_result(session_key):
         for alloc in allocations:
             hall_allocs[alloc.hall_name].append(alloc)
             # Add to flat list
-            student_allocations.append(type('StudentAllocation', (), {
+            student_allocations.append({
                 'registerNumber': alloc.register_number,
                 'department': alloc.department,
                 'subject': alloc.subject_code,
@@ -274,7 +274,7 @@ def reconstruct_seating_result(session_key):
                 'row': alloc.row_num,
                 'col': alloc.col_num,
                 'seatNumber': alloc.seat_number
-            }))
+            })
 
         hall_seating_list = []
         
@@ -314,13 +314,28 @@ def reconstruct_seating_result(session_key):
                     else:
                         e_date = session_key
                     
-                    seat.student = type('Student', (), {
-                        'registerNumber': alloc.register_number,
-                        'subjectCode': alloc.subject_code,
-                        'department': alloc.department,
-                        'examDate': e_date,
-                        'session': sess
-                    })
+                    from dataclasses import dataclass
+                    @dataclass
+                    class MockedStudent:
+                        register_number: str
+                        subject_code: str
+                        department: str
+                        exam_date: str
+                        session: str
+                        registerNumber: str
+                        subjectCode: str
+                        examDate: str
+
+                    seat.student = MockedStudent(
+                        register_number=alloc.register_number,
+                        subject_code=alloc.subject_code,
+                        department=alloc.department,
+                        exam_date=e_date,
+                        session=sess,
+                        registerNumber=alloc.register_number,
+                        subjectCode=alloc.subject_code,
+                        examDate=e_date
+                    )
                     students_count += 1
                 else:
                     print(f"WARNING: Allocation out of bounds for {hall.name} - Row:{alloc.row_num}, Col:{alloc.col_num}")
