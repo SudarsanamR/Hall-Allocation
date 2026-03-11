@@ -76,10 +76,10 @@ def upload_file():
             'studentsCount': len(students),
             'students': [
                 {
-                    'registerNumber': s.registerNumber,
-                    'subjectCode': s.subjectCode,
+                    'registerNumber': s.register_number,
+                    'subjectCode': s.subject_code,
                     'department': s.department,
-                    'examDate': s.examDate,
+                    'examDate': s.exam_date,
                     'session': s.session
                 } for s in students[:10]  # Return first 10 as preview
             ],
@@ -96,10 +96,10 @@ def get_students():
     """Get current student data"""
     students = [
         {
-            'registerNumber': s.registerNumber,
-            'subjectCode': s.subjectCode,
+            'registerNumber': s.register_number,
+            'subjectCode': s.subject_code,
             'department': s.department,
-            'examDate': s.examDate,
+            'examDate': s.exam_date,
             'session': s.session
         } for s in Student.query.all()
     ]

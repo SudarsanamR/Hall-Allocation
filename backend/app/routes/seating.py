@@ -30,7 +30,7 @@ def generate_seating():
         # 1. Group students by Session (Date + Session)
         session_groups = defaultdict(list)
         for student in students:
-            key = f"{student.examDate}_{student.session}"
+            key = f"{student.exam_date}_{student.session}"
             session_groups[key].append(student)
             
         # 2. Iterate and Allocate
@@ -83,10 +83,10 @@ def generate_seating():
                         }
                         if seat.student:
                             seat_data['student'] = {
-                                'registerNumber': seat.student.registerNumber,
-                                'subjectCode': seat.student.subjectCode,
+                                'registerNumber': seat.student.register_number,
+                                'subjectCode': seat.student.subject_code,
                                 'department': seat.student.department,
-                                'examDate': seat.student.examDate,
+                                'examDate': seat.student.exam_date,
                                 'session': seat.student.session
                             }
                         row_response.append(seat_data)
@@ -111,7 +111,7 @@ def generate_seating():
                 'halls': halls_response,
                 'studentAllocation': [
                     {
-                        'registerNumber': sa.registerNumber,
+                        'registerNumber': sa.register_number,
                         'department': sa.department,
                         'subject': sa.subject,
                         'hallName': sa.hallName,
@@ -198,10 +198,10 @@ def get_session_seating(session_key):
                     }
                     if seat.student:
                         seat_data['student'] = {
-                            'registerNumber': seat.student.registerNumber,
-                            'subjectCode': seat.student.subjectCode,
+                            'registerNumber': seat.student.register_number,
+                            'subjectCode': seat.student.subject_code,
                             'department': seat.student.department,
-                            'examDate': seat.student.examDate,
+                            'examDate': seat.student.exam_date,
                             'session': seat.student.session
                         }
                     row_response.append(seat_data)
@@ -226,7 +226,7 @@ def get_session_seating(session_key):
             'halls': halls_response,
             'studentAllocation': [
                 {
-                    'registerNumber': sa.registerNumber,
+                    'registerNumber': sa.register_number,
                     'department': sa.department,
                     'subject': sa.subject,
                     'hallName': sa.hallName,

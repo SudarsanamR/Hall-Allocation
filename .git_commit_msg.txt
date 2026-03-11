@@ -1,0 +1,9 @@
+v6.0.0: Offline-only refactor — remove auth, add student viewer, enable auto-updater
+
+- Phase 1: Strip cloud infrastructure (vercel, Procfile, production CORS/CSRF/rate limiting)
+- Phase 2: Remove all authentication (login, register, SuperAdmin, CSRF, role decorators)
+- Phase 3: Add static student web viewer (student-viewer/) with matching theme
+- Phase 4: Update release workflow (v* triggers), enable Tauri auto-updater
+- Add Export JSON button to AdminDashboard for student viewer data
+- File-based action logging replaces database audit log
+- All 13 backend tests pass, frontend builds cleanly

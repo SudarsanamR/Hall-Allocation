@@ -37,7 +37,7 @@ def get_exam_info(seating_result: SeatingResult) -> tuple:
         for row in hall_seating.grid:
             for seat in row:
                 if seat.student:
-                    exam_date = seat.student.examDate or exam_date
+                    exam_date = seat.student.exam_date or exam_date
                     session = seat.student.session or session
                     date_str = exam_date
                     return exam_date, session, date_str
@@ -77,10 +77,10 @@ def generate_hall_wise_excel(seating_result: SeatingResult) -> BytesIO:
         for row in hall_seating.grid:
             for seat in row:
                 if seat.student:
-                    subject_counts[seat.student.subjectCode] += 1
+                    subject_counts[seat.student.subject_code] += 1
                     dept = seat.student.department
-                    dept_data[dept]['students'].append(seat.student.registerNumber)
-                    dept_data[dept]['halls'][hall.name].append(seat.student.registerNumber)
+                    dept_data[dept]['students'].append(seat.student.register_number)
+                    dept_data[dept]['halls'][hall.name].append(seat.student.register_number)
         
         hall_data.append({
             'hall': hall.name,
@@ -174,8 +174,8 @@ def _write_seating_sheet(ws, halls, exam_date, session):
                 seat_number = get_snake_seat_number(row_idx, col_idx, num_rows)
                 
                 if seat and seat.student:
-                    reg_cell.value = seat.student.registerNumber
-                    dept_students[seat.student.department].append(seat.student.registerNumber)
+                    reg_cell.value = seat.student.register_number
+                    dept_students[seat.student.department].append(seat.student.register_number)
                 else:
                     reg_cell.value = ""
                 
@@ -415,8 +415,8 @@ def _write_auditorium_sheet(ws, auditorium_halls, exam_date, session):
             if grid_row and grid_row < len(grid) and 0 < len(grid[grid_row]):
                 seat = grid[grid_row][0]
                 if seat and seat.student:
-                    ws.cell(row=data_row, column=excel_col, value=seat.student.registerNumber).font = DATA_FONT
-                    dept_students[seat.student.department].append(seat.student.registerNumber)
+                    ws.cell(row=data_row, column=excel_col, value=seat.student.register_number).font = DATA_FONT
+                    dept_students[seat.student.department].append(seat.student.register_number)
             ws.cell(row=data_row, column=excel_col + 1, value=seat_num_col1).font = DATA_FONT
             
             # Column 2: seats 16-9 (reversed)
@@ -426,8 +426,8 @@ def _write_auditorium_sheet(ws, auditorium_halls, exam_date, session):
             if grid_row and grid_row < len(grid) and 1 < len(grid[grid_row]):
                 seat = grid[grid_row][1]
                 if seat and seat.student:
-                    ws.cell(row=data_row, column=excel_col, value=seat.student.registerNumber).font = DATA_FONT
-                    dept_students[seat.student.department].append(seat.student.registerNumber)
+                    ws.cell(row=data_row, column=excel_col, value=seat.student.register_number).font = DATA_FONT
+                    dept_students[seat.student.department].append(seat.student.register_number)
             ws.cell(row=data_row, column=excel_col + 1, value=seat_num_col2).font = DATA_FONT
             
             # Column 3: seats 17-24
@@ -437,8 +437,8 @@ def _write_auditorium_sheet(ws, auditorium_halls, exam_date, session):
             if grid_row and grid_row < len(grid) and 2 < len(grid[grid_row]):
                 seat = grid[grid_row][2]
                 if seat and seat.student:
-                    ws.cell(row=data_row, column=excel_col, value=seat.student.registerNumber).font = DATA_FONT
-                    dept_students[seat.student.department].append(seat.student.registerNumber)
+                    ws.cell(row=data_row, column=excel_col, value=seat.student.register_number).font = DATA_FONT
+                    dept_students[seat.student.department].append(seat.student.register_number)
             ws.cell(row=data_row, column=excel_col + 1, value=seat_num_col3).font = DATA_FONT
         
         current_row += 8
@@ -449,8 +449,8 @@ def _write_auditorium_sheet(ws, auditorium_halls, exam_date, session):
         if len(grid) > 0 and len(grid[0]) > 2:
             seat = grid[0][2]
             if seat and seat.student:
-                ws.cell(row=current_row, column=5, value=seat.student.registerNumber).font = DATA_FONT
-                dept_students[seat.student.department].append(seat.student.registerNumber)
+                ws.cell(row=current_row, column=5, value=seat.student.register_number).font = DATA_FONT
+                dept_students[seat.student.department].append(seat.student.register_number)
         ws.cell(row=current_row, column=6, value=25).font = DATA_FONT
         current_row += 2
         
@@ -476,7 +476,7 @@ def generate_student_wise_excel(seating_result: SeatingResult) -> BytesIO:
     data = []
     for allocation in seating_result.studentAllocation:
         data.append({
-            'Registration Number': allocation.registerNumber,
+            'Registration Number': allocation.register_number,
             'Subject': allocation.subject,
             'Department': allocation.department,
             'Hall': allocation.hallName,

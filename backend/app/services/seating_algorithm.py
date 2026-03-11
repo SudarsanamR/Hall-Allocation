@@ -66,7 +66,7 @@ def allocate_session_strict(students: List[Student], halls: List[Hall]) -> Seati
     
     for s in students:
         # Check if subject code matches (case-insensitive just in case, though usually exact)
-        if s.subjectCode.strip().upper() in drawing_codes:
+        if s.subject_code.strip().upper() in drawing_codes:
             drawing_students.append(s)
         else:
             regular_students.append(s)
@@ -150,8 +150,8 @@ def allocate_seats(students: List[Student], halls: List[Hall]) -> SeatingResult:
     # Sort master list for consistency
     # Use valid natural sort for register numbers (try int, fallback to str)
     def natural_key(s: Student):
-        reg = s.registerNumber.strip()
-        is_prio = s.subjectCode.strip().upper() in priority_codes
+        reg = s.register_number.strip()
+        is_prio = s.subject_code.strip().upper() in priority_codes
         # Sort key: (NOT Priority, Department, Subject, RegNo)
         # False < True. So (True, ...) makes Prio Last if we use (is_prio).
         # We want Prio First. So use (not is_prio) i.e. False for Prio (0), True for Non-Prio (1).
@@ -160,20 +160,20 @@ def allocate_seats(students: List[Student], halls: List[Hall]) -> SeatingResult:
         if reg.isdigit():
             reg_val = int(reg)
             
-        return (not is_prio, s.department, s.subjectCode, reg_val)
+        return (not is_prio, s.department, s.subject_code, reg_val)
 
     sorted_students = sorted(students, key=natural_key)
 
     # --- 1. Determine Grouping Strategy ---
     unique_depts = set(s.department.strip() for s in sorted_students)
-    unique_subjects = set(s.subjectCode.strip() for s in sorted_students)
+    unique_subjects = set(s.subject_code.strip() for s in sorted_students)
 
     if len(unique_depts) > 1:
         # Multiple Departments -> Group by Department
         group_key_fn = lambda s: s.department.strip()
     else:
         # Single Department -> Group by Subject
-        group_key_fn = lambda s: s.subjectCode.strip()
+        group_key_fn = lambda s: s.subject_code.strip()
 
     # Build Groups (Mutable Lists)
     groups_dict = defaultdict(list)
@@ -239,9 +239,9 @@ def allocate_seats(students: List[Student], halls: List[Hall]) -> SeatingResult:
 
                 if seat.student:
                     allocation = StudentAllocation(
-                        registerNumber=seat.student.registerNumber,
+                        registerNumber=seat.student.register_number,
                         department=seat.student.department,
-                        subject=seat.student.subjectCode,
+                        subject=seat.student.subject_code,
                         hallName=hall.name,
                         row=r_idx,
                         col=c_idx,
@@ -328,7 +328,7 @@ def _build_mixing_queue(
         def priority_sort_key(k):
             # Check if next student is Priority
             next_student = groups[k][0]
-            is_prio = next_student.subjectCode.strip().upper() in priority_codes
+            is_prio = next_student.subject_code.strip().upper() in priority_codes
             # Sort: Priority First (False < True), then Alphabetical Key
             return (not is_prio, k)
             
@@ -373,7 +373,7 @@ def _build_mixing_queue(
         prev_idx = idx - 1
         if prev_idx >= 0 and queue[prev_idx]:
              s = queue[prev_idx]
-             if s.subjectCode == subject_code or s.department == dept_code:
+             if s.subject_code == subject_code or s.department == dept_code:
                  # Check if they are physically adjacent
                  pr, pc = get_coords(prev_idx)
                  if abs(pr - r) + abs(pc - c) == 1:
@@ -392,7 +392,7 @@ def _build_mixing_queue(
             
             if 0 <= target_idx < len(queue):
                 s = queue[target_idx]
-                if s and (s.subjectCode == subject_code or s.department == dept_code):
+                if s and (s.subject_code == subject_code or s.department == dept_code):
                     return True
                     
         return False
@@ -422,7 +422,7 @@ def _build_mixing_queue(
             if len(active_keys) <= 1:
                 # Check for conflict at current position
                 current_idx = len(queue)
-                if check_conflict(current_idx, student_candidate.subjectCode, student_candidate.department):
+                if check_conflict(current_idx, student_candidate.subject_code, student_candidate.department):
                     # CONFLICT DETECTED!
                     
                     # GLOBAL BALANCING CHECK:
@@ -506,7 +506,7 @@ def _fill_hall_snake(
                     seat = grid[r][c]
                     seat.student = item
                     # Store Allocation Metadata
-                    seat.subject = item.subjectCode
+                    seat.subject = item.subject_code
                     seat.department = item.department
                     valid_count += 1
             else:
