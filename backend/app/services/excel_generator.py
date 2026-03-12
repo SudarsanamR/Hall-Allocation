@@ -57,6 +57,7 @@ def generate_hall_wise_excel(seating_result: SeatingResult) -> BytesIO:
     # Collect data for all sheets
     hall_data = []  # For HALL ALLO sheet
     dept_data = defaultdict(lambda: {'students': [], 'halls': defaultdict(list)})  # For NB sheet
+    subject_data = defaultdict(list)  # For SUBJECT WISE sheet: subject -> [reg_numbers]
     regular_halls = []
     auditorium_halls = []
     
@@ -81,6 +82,7 @@ def generate_hall_wise_excel(seating_result: SeatingResult) -> BytesIO:
                     dept = seat.student.department
                     dept_data[dept]['students'].append(seat.student.register_number)
                     dept_data[dept]['halls'][hall.name].append(seat.student.register_number)
+                    subject_data[seat.student.subject_code].append(seat.student.register_number)
         
         hall_data.append({
             'hall': hall.name,
@@ -105,6 +107,10 @@ def generate_hall_wise_excel(seating_result: SeatingResult) -> BytesIO:
     if auditorium_halls:
         ws_aud = wb.create_sheet("aud seating")
         _write_auditorium_sheet(ws_aud, auditorium_halls, exam_date, session)
+    
+    # === SHEET 5: SUBJECT WISE (Registration numbers by subject) ===
+    ws_subject = wb.create_sheet("SUBJECT WISE")
+    _write_subject_wise_sheet(ws_subject, subject_data, date_str, session)
     
     wb.save(output)
     output.seek(0)
@@ -467,6 +473,58 @@ def _write_auditorium_sheet(ws, auditorium_halls, exam_date, session):
         ws.cell(row=current_row, column=6, value=hall_seating.studentsCount).font = HEADER_FONT
         current_row += 2
 
+
+def _write_subject_wise_sheet(ws, subject_data, date_str, session):
+    """Write the SUBJECT WISE sheet — registration numbers listed vertically per subject."""
+    # Title
+    ws.merge_cells('A1:F1')
+    title_cell = ws.cell(row=1, column=1, value="GCE : : ERODE - ANNA UNIVERSITY EXAMS - NOV/DEC 2025")
+    title_cell.font = TITLE_FONT
+    title_cell.alignment = CENTER_ALIGN
+
+    ws.merge_cells('A2:F2')
+    ws.cell(row=2, column=1, value="SUBJECT WISE STUDENT LIST").font = HEADER_FONT
+    ws.cell(row=2, column=1).alignment = CENTER_ALIGN
+
+    ws.cell(row=3, column=1, value=f"DATE & SESSION  :  {date_str} {session}").font = HEADER_FONT
+
+    # Sort subjects
+    sorted_subjects = sorted(subject_data.keys())
+
+    # Write each subject as a column, side by side (max 5 subjects per group)
+    subjects_per_page = 5
+    start_row = 5
+
+    for group_idx in range(0, len(sorted_subjects), subjects_per_page):
+        group = sorted_subjects[group_idx:group_idx + subjects_per_page]
+
+        # Header row: Subject codes with count
+        for col_offset, subject in enumerate(group):
+            col = col_offset + 1
+            students = sorted(subject_data[subject])
+            header_text = f"{subject} ({len(students)})"
+            cell = ws.cell(row=start_row, column=col, value=header_text)
+            cell.font = HEADER_FONT
+            cell.alignment = CENTER_ALIGN
+            cell.border = FULL_BORDER
+            ws.column_dimensions[get_column_letter(col)].width = 22
+
+        # Data rows: registration numbers vertically
+        max_students = max(len(subject_data[s]) for s in group)
+        for row_offset in range(max_students):
+            for col_offset, subject in enumerate(group):
+                col = col_offset + 1
+                students = sorted(subject_data[subject])
+                if row_offset < len(students):
+                    cell = ws.cell(row=start_row + 1 + row_offset, column=col, value=students[row_offset])
+                    cell.font = DATA_FONT
+                    cell.alignment = CENTER_ALIGN
+                    cell.border = FULL_BORDER
+                else:
+                    ws.cell(row=start_row + 1 + row_offset, column=col).border = FULL_BORDER
+
+        # Move start_row down for next group
+        start_row += max_students + 3  # 1 header + data + 2 blank rows
 
 
 

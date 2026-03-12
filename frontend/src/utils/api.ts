@@ -13,15 +13,20 @@ const api = axios.create({
     },
 });
 
+// Suppress network error toast during backend startup (sidecar takes 3-5s to boot)
+let startupGracePeriod = true;
+setTimeout(() => { startupGracePeriod = false; }, 20000); // 20s grace
+
 // Interceptors
 api.interceptors.response.use(
     (response) => {
+        startupGracePeriod = false; // Backend is up, end grace period immediately
         window.dispatchEvent(new CustomEvent('network:success'));
         return response;
     },
     async (error) => {
         // Network error (server down, etc.)
-        if (!error.response) {
+        if (!error.response && !startupGracePeriod) {
             window.dispatchEvent(new CustomEvent('network:error', {
                 detail: { message: 'Unable to connect to the local server. Please restart the application.' }
             }));
