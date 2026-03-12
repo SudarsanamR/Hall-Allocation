@@ -71,30 +71,42 @@ try:
 
     if __name__ == '__main__':
         import threading
-        import time
+        import socket
 
-        def watch_parent():
-            ppid = os.getppid()
-            while True:
-                try:
-                    import ctypes
-                    kernel32 = ctypes.windll.kernel32
-                    process = kernel32.OpenProcess(0x00100000, 0, ppid)
-                    if process == 0:
-                        logger.info("Parent process not found. Exiting.")
-                        os._exit(0)
-                    exit_code = ctypes.c_ulong()
-                    kernel32.GetExitCodeProcess(process, ctypes.byref(exit_code))
-                    kernel32.CloseHandle(process)
-                    if exit_code.value != 259: # STILL_ACTIVE
-                        logger.info("Parent process exited. Shutting down backend.")
-                        os._exit(0)
-                except Exception as e:
-                    pass
-                time.sleep(1)
+        # --- Prevent duplicate instances ---
+        # If port 5001 is already in use, another backend is running. Exit cleanly.
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.bind(('127.0.0.1', 5001))
+            sock.close()  # Release; Flask will bind it properly
+        except OSError:
+            logger.info("Port 5001 already in use. Another backend instance is running. Exiting.")
+            sys.exit(0)
 
-        threading.Thread(target=watch_parent, daemon=True).start()
-        
+        # --- Watch stdin pipe for Tauri lifecycle ---
+        # When Tauri spawns the sidecar, it holds the stdin pipe open.
+        # When the frontend window closes, Tauri closes the pipe → stdin hits EOF.
+        # We detect this and shut down the backend cleanly.
+        original_stdin = sys.__stdin__  # Use original stdin, not redirected one
+
+        def watch_stdin():
+            """Watch for stdin EOF — indicates Tauri has exited."""
+            try:
+                if original_stdin is not None:
+                    while True:
+                        line = original_stdin.readline()
+                        if not line:  # EOF
+                            logger.info("Stdin closed (Tauri exited). Shutting down backend.")
+                            os._exit(0)
+                else:
+                    logger.info("No stdin available. Skipping stdin watcher.")
+            except Exception:
+                logger.info("Stdin read error. Shutting down backend.")
+                os._exit(0)
+
+        watcher = threading.Thread(target=watch_stdin, daemon=True)
+        watcher.start()
+
         logger.info("Starting Flask server on port 5001")
         # Use threaded mode for better handling
         app.run(debug=False, host='127.0.0.1', port=5001, threaded=True)
@@ -102,3 +114,4 @@ try:
 except Exception as e:
     logger.exception("Failed to start backend")
     sys.exit(1)
+

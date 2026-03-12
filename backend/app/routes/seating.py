@@ -170,77 +170,109 @@ def clear_allocations():
 def get_session_seating(session_key):
     """
     Get detailed seating result for a specific session.
+    Builds the JSON response directly from DB records — no intermediate objects.
     """
     try:
-        # Check if session exists
-        exists = db.session.query(Allocation).filter_by(session_key=session_key).first()
-        if not exists:
-             return jsonify({'error': 'Session not found'}), 404
+        allocations = Allocation.query.filter_by(session_key=session_key).all()
+        if not allocations:
+            return jsonify({'error': 'Session not found'}), 404
 
-        result = reconstruct_seating_result(session_key)
-        if not result:
-             return jsonify({'error': 'Failed to reconstruct results'}), 500
-             
-        # Convert to JSON response format
+        halls = Hall.query.all()
+        hall_map = {h.name: h for h in halls}
+
+        # Group allocations by hall
+        hall_allocs = defaultdict(list)
+        student_allocations = []
+
+        for alloc in allocations:
+            hall_allocs[alloc.hall_name].append(alloc)
+            student_allocations.append({
+                'registerNumber': alloc.register_number,
+                'department': alloc.department,
+                'subject': alloc.subject_code,
+                'hallName': alloc.hall_name,
+                'row': alloc.row_num,
+                'col': alloc.col_num,
+                'seatNumber': alloc.seat_number
+            })
+
+        # Parse session info
+        e_date = "Unknown"
+        sess = ""
+        if '_' in session_key:
+            parts = session_key.rsplit('_', 1)
+            e_date = parts[0]
+            sess = parts[1] if len(parts) > 1 else ""
+        else:
+            e_date = session_key
+
+        # Build hall grids
         halls_response = []
-        for hs in result.halls:
+        for hall_name, allocs in hall_allocs.items():
+            hall = hall_map.get(hall_name)
+            if not hall:
+                continue
+
+            # Build seat lookup: (row, col) -> allocation
+            seat_map = {(a.row_num, a.col_num): a for a in allocs}
+
             grid_response = []
-            for row in hs.grid:
+            students_count = 0
+            for r in range(hall.rows):
                 row_response = []
-                for seat in row:
+                for c in range(hall.columns):
+                    seat_num = get_snake_seat_number(r, c, hall.rows)
+                    cell_alloc = seat_map.get((r, c))
+
                     seat_data = {
-                        'row': seat.row,
-                        'col': seat.col,
-                        'subject': seat.subject,
-                        'department': seat.department,
-                        'seatNumber': seat.seatNumber,
-                        'student': None
+                        'row': r,
+                        'col': c,
+                        'seatNumber': str(seat_num),
+                        'student': None,
+                        'subject': None,
+                        'department': None
                     }
-                    if seat.student:
+
+                    if cell_alloc:
                         seat_data['student'] = {
-                            'registerNumber': seat.student.register_number,
-                            'subjectCode': seat.student.subject_code,
-                            'department': seat.student.department,
-                            'examDate': seat.student.exam_date,
-                            'session': seat.student.session
+                            'registerNumber': cell_alloc.register_number,
+                            'subjectCode': cell_alloc.subject_code,
+                            'department': cell_alloc.department,
+                            'examDate': e_date,
+                            'session': sess
                         }
+                        seat_data['subject'] = cell_alloc.subject_code
+                        seat_data['department'] = cell_alloc.department
+                        students_count += 1
+
                     row_response.append(seat_data)
                 grid_response.append(row_response)
-            
+
             halls_response.append({
                 'hall': {
-                    'id': hs.hall.id,
-                    'name': hs.hall.name,
-                    'block': hs.hall.block,
-                    'rows': hs.hall.rows,
-                    'columns': hs.hall.columns,
-                    'capacity': hs.hall.capacity
+                    'id': hall.id,
+                    'name': hall.name,
+                    'block': hall.block,
+                    'rows': hall.rows,
+                    'columns': hall.columns,
+                    'capacity': hall.capacity
                 },
                 'grid': grid_response,
-                'studentsCount': hs.studentsCount
+                'studentsCount': students_count
             })
 
         response_data = {
-            'totalStudents': result.totalStudents,
-            'hallsUsed': result.hallsUsed,
+            'totalStudents': len(allocations),
+            'hallsUsed': len(halls_response),
             'halls': halls_response,
-            'studentAllocation': [
-                {
-                    'registerNumber': sa.register_number,
-                    'department': sa.department,
-                    'subject': sa.subject,
-                    'hallName': sa.hallName,
-                    'row': sa.row,
-                    'col': sa.col,
-                    'seatNumber': sa.seatNumber
-                }
-                for sa in result.studentAllocation
-            ]
+            'studentAllocation': student_allocations
         }
-        
+
         return jsonify(response_data), 200
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 
