@@ -32,21 +32,30 @@ const AdminDashboard = () => {
         checkStudentsAndLoad();
     }, []);
 
-    const checkStudentsAndLoad = async () => {
-        try {
-            const students = await getStudents();
-            setBackendError(false);
-            if (students.length > 0) {
-                setHasStudents(true);
-                // Instead of auto-generating, just check for existing sessions
-                loadExistingSessions();
-            } else {
-                setHasStudents(false);
+    const checkStudentsAndLoad = async (retries = 10): Promise<void> => {
+        for (let attempt = 0; attempt < retries; attempt++) {
+            try {
+                const students = await getStudents();
+                setBackendError(false);
+                if (students.length > 0) {
+                    setHasStudents(true);
+                    loadExistingSessions();
+                } else {
+                    setHasStudents(false);
+                }
+                return; // Success — exit the retry loop
+            } catch (err) {
+                console.warn(`Backend check attempt ${attempt + 1}/${retries} failed`);
+                if (attempt < retries - 1) {
+                    // Wait before retrying (backend may still be starting)
+                    await new Promise(r => setTimeout(r, 2000));
+                } else {
+                    // All retries exhausted
+                    console.error("Backend check failed after all retries:", err);
+                    setHasStudents(false);
+                    setBackendError(true);
+                }
             }
-        } catch (err) {
-            console.error("Backend check failed:", err);
-            setHasStudents(false);
-            setBackendError(true);
         }
     };
 
