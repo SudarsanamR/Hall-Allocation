@@ -15,7 +15,7 @@ const api = axios.create({
 
 // Suppress network error toast during backend startup (sidecar takes 3-5s to boot)
 let startupGracePeriod = true;
-setTimeout(() => { startupGracePeriod = false; }, 20000); // 20s grace
+setTimeout(() => { startupGracePeriod = false; }, 30000); // 30s grace for slower machines
 
 // Interceptors
 api.interceptors.response.use(
@@ -209,6 +209,16 @@ export const deleteSubjectConfig = async (type: 'priority' | 'drawing', subject_
 };
 
 // Export Allocations as JSON (for student web viewer)
+// Health check for backend readiness
+export const healthCheck = async (): Promise<boolean> => {
+    try {
+        const response = await api.get('/health');
+        return response.data?.status === 'ok';
+    } catch {
+        return false;
+    }
+};
+
 export const exportAllocationsJSON = async (): Promise<void> => {
     try {
         const response = await api.get('/export/allocations');

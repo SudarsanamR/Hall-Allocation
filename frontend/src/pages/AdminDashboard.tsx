@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, Download, RefreshCw, LayoutGrid, Trash2, Settings, Share2 } from 'lucide-react';
-import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, downloadStudentWiseExcel, getSessionSeating, clearAllocations, getSessions, exportAllocationsJSON } from '../utils/api';
+import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, downloadStudentWiseExcel, getSessionSeating, clearAllocations, getSessions, exportAllocationsJSON, healthCheck } from '../utils/api';
 import type { SeatingResult, UploadFileResponse, Stats } from '../types';
 import SeatingGrid from '../components/seating/SeatingGrid';
 import StatCards from '../components/layout/StatCards';
@@ -32,30 +32,43 @@ const AdminDashboard = () => {
         checkStudentsAndLoad();
     }, []);
 
-    const checkStudentsAndLoad = async (retries = 10): Promise<void> => {
+    const checkStudentsAndLoad = async (retries = 15): Promise<void> => {
+        // Phase 1: Wait for backend to be ready using lightweight health check
         for (let attempt = 0; attempt < retries; attempt++) {
             try {
-                const students = await getStudents();
-                setBackendError(false);
-                if (students.length > 0) {
-                    setHasStudents(true);
-                    loadExistingSessions();
-                } else {
-                    setHasStudents(false);
+                const isHealthy = await healthCheck();
+                if (isHealthy) {
+                    setBackendError(false);
+                    break;
                 }
-                return; // Success — exit the retry loop
+                throw new Error('Backend not ready');
             } catch (err) {
-                console.warn(`Backend check attempt ${attempt + 1}/${retries} failed`);
+                console.warn(`Backend health check attempt ${attempt + 1}/${retries} failed`);
                 if (attempt < retries - 1) {
-                    // Wait before retrying (backend may still be starting)
-                    await new Promise(r => setTimeout(r, 2000));
+                    // Exponential backoff: 1s, 1.5s, 2s, 2.5s, 3s...
+                    await new Promise(r => setTimeout(r, 1000 + attempt * 500));
                 } else {
                     // All retries exhausted
-                    console.error("Backend check failed after all retries:", err);
+                    console.error('Backend health check failed after all retries');
                     setHasStudents(false);
                     setBackendError(true);
+                    return;
                 }
             }
+        }
+
+        // Phase 2: Backend is ready, check for existing students
+        try {
+            const students = await getStudents();
+            if (students.length > 0) {
+                setHasStudents(true);
+                loadExistingSessions();
+            } else {
+                setHasStudents(false);
+            }
+        } catch (err) {
+            console.error('Failed to load students:', err);
+            setHasStudents(false);
         }
     };
 
@@ -124,8 +137,16 @@ const AdminDashboard = () => {
             // Auto generate after successful upload
             await handleGenerate();
 
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to upload file');
+        } catch (err: any) {
+            // Extract the error message from the backend response if available
+            const backendMessage = err?.response?.data?.error;
+            if (backendMessage) {
+                setError(backendMessage);
+            } else if (err?.message === 'Network Error') {
+                setError('Cannot connect to the backend server. Please restart the application.');
+            } else {
+                setError(err instanceof Error ? err.message : 'Failed to upload file');
+            }
         } finally {
             setUploading(false);
         }

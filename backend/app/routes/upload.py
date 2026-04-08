@@ -3,12 +3,14 @@ Upload Route - Handle file uploads and student data parsing
 """
 from flask import Blueprint, request, jsonify, current_app
 import os
+import logging
 from werkzeug.utils import secure_filename
 from app.services.logging_config import log_action
 from app.models import db, Student
 from app.services import parse_file, validate_student_data
 
 bp = Blueprint('upload', __name__, url_prefix='/api')
+logger = logging.getLogger(__name__)
 
 ALLOWED_EXTENSIONS = {'pdf'}
 
@@ -17,23 +19,20 @@ def allowed_file(filename):
 
 @bp.route('/upload', methods=['POST'])
 def upload_file():
-    """Upload and parse Excel/CSV file with student data"""
-    # Removed manual session check, handled by decorator
+    """Upload and parse PDF file with student data"""
         
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
     
     file = request.files['file']
     
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-    
-    if file.filename == '': # Duplicate check removed
+    if not file.filename or file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
     
     if not allowed_file(file.filename):
         return jsonify({'error': 'Invalid file type. Please upload a .pdf file'}), 400
     
+    file_path = None
     try:
         # Save file temporarily
         filename = secure_filename(file.filename)
@@ -41,8 +40,10 @@ def upload_file():
         os.makedirs(upload_folder, exist_ok=True)
         file_path = os.path.join(upload_folder, filename)
         file.save(file_path)
+        logger.info(f"File saved to {file_path}, size: {os.path.getsize(file_path)} bytes")
         
         # Parse file - returns list of Student objects (transient)
+        # parse_pdf now raises ValueError with a descriptive message if 0 students found
         from app.services import parse_pdf
         students = parse_pdf(file_path)
         
@@ -66,7 +67,8 @@ def upload_file():
             raise db_err
         
         # Clean up file
-        os.remove(file_path)
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
         
         log_action('UPLOAD_DATA', f'Uploaded {len(students)} students from {filename}')
         
@@ -87,8 +89,20 @@ def upload_file():
         }
         
         return jsonify(response), 200
+    
+    except ValueError as ve:
+        # PDF parsing validation errors (0 students, format mismatch, etc.)
+        logger.warning(f"PDF parse validation error: {str(ve)}")
+        # Clean up file on error
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+        return jsonify({'error': str(ve)}), 400
         
     except Exception as e:
+        logger.exception(f"Upload failed: {str(e)}")
+        # Clean up file on error
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/students', methods=['GET'])

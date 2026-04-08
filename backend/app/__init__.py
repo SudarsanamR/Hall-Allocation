@@ -80,9 +80,14 @@ def create_app():
     app.register_blueprint(seating.bp)
     app.register_blueprint(config.bp)
     
-    # Error Handlers
+    # Health check endpoint for frontend connectivity detection
     from flask import jsonify
     
+    @app.route('/api/health')
+    def health_check():
+        return jsonify({'status': 'ok'}), 200
+    
+    # Error Handlers
     @app.errorhandler(413)
     def too_large(e):
         return jsonify({'success': False, 'message': 'File too large (16MB max)'}), 413
