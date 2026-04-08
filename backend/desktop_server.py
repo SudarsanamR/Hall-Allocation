@@ -83,29 +83,9 @@ try:
             logger.info("Port 5001 already in use. Another backend instance is running. Exiting.")
             sys.exit(0)
 
-        # --- Watch stdin pipe for Tauri lifecycle ---
-        # When Tauri spawns the sidecar, it holds the stdin pipe open.
-        # When the frontend window closes, Tauri closes the pipe → stdin hits EOF.
-        # We detect this and shut down the backend cleanly.
-        original_stdin = sys.__stdin__  # Use original stdin, not redirected one
-
-        def watch_stdin():
-            """Watch for stdin EOF — indicates Tauri has exited."""
-            try:
-                if original_stdin is not None:
-                    while True:
-                        line = original_stdin.readline()
-                        if not line:  # EOF
-                            logger.info("Stdin closed (Tauri exited). Shutting down backend.")
-                            os._exit(0)
-                else:
-                    logger.info("No stdin available. Skipping stdin watcher.")
-            except Exception:
-                logger.info("Stdin read error. Shutting down backend.")
-                os._exit(0)
-
-        watcher = threading.Thread(target=watch_stdin, daemon=True)
-        watcher.start()
+        # Wait, instead of watching stdin (which fails if no stdin pipe is attached), 
+        # we let Tauri manage the lifecycle and kill the process explicitly, 
+        # which it already does in lib.rs (`child.kill()`).
 
         logger.info("Starting Flask server on port 5001")
         # Use threaded mode for better handling

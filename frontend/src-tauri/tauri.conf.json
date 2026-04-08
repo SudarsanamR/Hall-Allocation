@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "GCEE Exam Hall Allotment",
-  "version": "6.0.2",
+  "version": "7.0.0",
   "identifier": "com.gcee.hallallocation",
   "build": {
     "frontendDist": "../dist",
