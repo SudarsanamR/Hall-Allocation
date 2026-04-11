@@ -1,0 +1,3 @@
+fix(seating): resolve 500 attribute error by replacing dynamic type() creation with normal dictionaries and dataclasses
+
+Flask JSON serialization (jsonify) fails when trying to serialize dynamic classes created with `type('Class', (), {})` inside a Dataclass list. Replaced them with proper dictionaries and an internal `MockedStudent` dataclass to support both JSON serialization and object dot-notation used by `excel_generator.py`.

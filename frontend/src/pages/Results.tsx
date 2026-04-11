@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Download, FileSpreadsheet, AlertCircle } from 'lucide-react';
-import { downloadHallWiseExcel, downloadStudentWiseExcel, generateSeating } from '../utils/api';
+import { downloadHallWiseExcel, generateSeating } from '../utils/api';
 
 const Results = () => {
     const [sessions, setSessions] = useState<string[]>([]);
@@ -32,9 +32,7 @@ const Results = () => {
         if (selectedSession) downloadHallWiseExcel(selectedSession);
     };
 
-    const handleDownloadStudent = () => {
-        if (selectedSession) downloadStudentWiseExcel(selectedSession);
-    };
+
 
     if (loading) {
         return (
@@ -108,26 +106,7 @@ const Results = () => {
                     </button>
                 </div>
 
-                {/* Student-wise Excel */}
-                <div className="card hover:border-primary-200 border border-transparent transition-all">
-                    <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mb-6">
-                        <FileSpreadsheet className="text-blue-600" size={32} />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        Student Allocation List
-                    </h3>
-                    <p className="text-gray-600 mb-6">
-                        Download the master list of all student allocations sorted by registration number.
-                    </p>
-                    <button
-                        onClick={handleDownloadStudent}
-                        className="w-full flex items-center justify-center gap-2 btn-secondary border-blue-200 text-blue-700 hover:bg-blue-50"
-                        aria-label={`Download Student List for ${selectedSession.replace('_', ' ')}`}
-                    >
-                        <Download size={20} />
-                        Download {selectedSession.replace('_', ' ')}
-                    </button>
-                </div>
+
             </div>
         </div>
     );

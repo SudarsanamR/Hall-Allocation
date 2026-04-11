@@ -1,9 +1,7 @@
-v6.0.0: Offline-only refactor — remove auth, add student viewer, enable auto-updater
+fix(frontend): add retry logic to backend health check
 
-- Phase 1: Strip cloud infrastructure (vercel, Procfile, production CORS/CSRF/rate limiting)
-- Phase 2: Remove all authentication (login, register, SuperAdmin, CSRF, role decorators)
-- Phase 3: Add static student web viewer (student-viewer/) with matching theme
-- Phase 4: Update release workflow (v* triggers), enable Tauri auto-updater
-- Add Export JSON button to AdminDashboard for student viewer data
-- File-based action logging replaces database audit log
-- All 13 backend tests pass, frontend builds cleanly
+The frontend fires a health check immediately on startup, but the backend
+sidecar takes 3-5 seconds to boot. Previously, the first failed check would
+permanently show "Backend Service Unavailable" even after the backend started.
+
+Now retries up to 10 times with 2-second delays before showing the error banner.

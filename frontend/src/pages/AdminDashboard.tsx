@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, Download, RefreshCw, LayoutGrid, Trash2, Settings, Share2 } from 'lucide-react';
-import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, downloadStudentWiseExcel, getSessionSeating, clearAllocations, getSessions, exportAllocationsJSON, healthCheck } from '../utils/api';
+import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, getSessionSeating, clearAllocations, getSessions, exportAllocationsJSON, healthCheck } from '../utils/api';
 import type { SeatingResult, UploadFileResponse, Stats } from '../types';
 import SeatingGrid from '../components/seating/SeatingGrid';
 import StatCards from '../components/layout/StatCards';
@@ -23,6 +23,7 @@ const AdminDashboard = () => {
     const [error, setError] = useState<string | null>(null);
     const [hasStudents, setHasStudents] = useState(false);
     const [backendError, setBackendError] = useState<boolean>(false);
+    const [showClearConfirm, setShowClearConfirm] = useState(false);
 
     const [availableSessions, setAvailableSessions] = useState<string[]>([]);
     const [currentResult, setCurrentResult] = useState<SeatingResult | null>(null);
@@ -193,10 +194,6 @@ const AdminDashboard = () => {
     };
 
     const handleClear = async () => {
-        if (!window.confirm("Are you sure you want to reset everything? This will clear all student data and allocations.\n\nYou will need to re-upload the PDF to generate new seating.")) {
-            return;
-        }
-
         setIsLoading(true);
         try {
             await clearAllocations();
@@ -214,6 +211,7 @@ const AdminDashboard = () => {
             setError('Failed to clear allocations.');
         } finally {
             setIsLoading(false);
+            setShowClearConfirm(false);
         }
     };
 
@@ -328,9 +326,7 @@ const AdminDashboard = () => {
         if (selectedSession) downloadHallWiseExcel(selectedSession);
     };
 
-    const handleDownloadStudent = () => {
-        if (selectedSession) downloadStudentWiseExcel(selectedSession);
-    };
+
 
     const stats: Stats = {
         totalStudents: currentResult?.totalStudents || 0,
@@ -357,7 +353,9 @@ const AdminDashboard = () => {
         'MBA': 'bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800',
         'MCA': 'bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800',
         'AUTO': 'bg-rose-200 text-rose-900 border-rose-300 dark:bg-rose-800/40 dark:text-rose-200 dark:border-rose-700',
-        'AUTOMOBILE': 'bg-rose-200 text-rose-900 border-rose-300 dark:bg-rose-800/40 dark:text-rose-200 dark:border-rose-700'
+        'AUTOMOBILE': 'bg-rose-200 text-rose-900 border-rose-300 dark:bg-rose-800/40 dark:text-rose-200 dark:border-rose-700',
+        'ME CSE': 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-900/30 dark:text-slate-300 dark:border-slate-800',
+        'ME STRU': 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800'
     };
 
     const fallbackColors = [
@@ -430,7 +428,8 @@ const AdminDashboard = () => {
                 <>
 
                     {/* 1. Upload Section */}
-                    <section className="space-y-6">
+                    {!hasStudents && (
+                        <section className="space-y-6">
 
                         {/* Backend Error Banner */}
                         {backendError && (
@@ -525,10 +524,11 @@ const AdminDashboard = () => {
                             )}
                         </div>
                     </section>
+                    )}
 
                     {/* 2. Results Section (Only if we have data) */}
                     {(hasStudents || isLoading) && (
-                        <section className="space-y-8 border-t border-gray-200 dark:border-gray-800 pt-12">
+                        <section className={`space-y-8 ${!hasStudents ? 'border-t border-gray-200 dark:border-gray-800 pt-12' : ''}`}>
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                                 <div>
                                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -541,14 +541,7 @@ const AdminDashboard = () => {
 
                                 {!isLoading && (
                                     <div className="flex flex-wrap gap-2 sm:gap-3">
-                                        <button
-                                            onClick={() => navigate('/halls')}
-                                            className="btn-secondary flex items-center gap-2 text-sm bg-white dark:bg-gray-800 flex-1 sm:flex-none justify-center"
-                                            aria-label="Manage Halls"
-                                        >
-                                            <LayoutGrid size={16} />
-                                            <span className="whitespace-nowrap">Manage Halls</span>
-                                        </button>
+
                                         <button
                                             onClick={handleGenerate}
                                             className="btn-secondary flex items-center gap-2 text-sm flex-1 sm:flex-none justify-center"
@@ -558,7 +551,7 @@ const AdminDashboard = () => {
                                             <span className="whitespace-nowrap">Refresh Allocation</span>
                                         </button>
                                         <button
-                                            onClick={handleClear}
+                                            onClick={() => setShowClearConfirm(true)}
                                             className="btn-secondary flex items-center gap-2 text-sm !text-red-600 hover:!bg-red-50 dark:!text-red-400 dark:hover:!bg-red-900/50 flex-1 sm:flex-none justify-center"
                                             title="Delete all current allocations"
                                             aria-label="Clear All Allocations"
@@ -616,14 +609,7 @@ const AdminDashboard = () => {
                                                 <FileSpreadsheet size={18} />
                                                 <span className="hidden sm:inline">Hall Sketch</span>
                                             </button>
-                                            <button
-                                                onClick={handleDownloadStudent}
-                                                className="btn-primary flex items-center gap-2 py-2 px-4 text-sm"
-                                                title="Download student allocation list"
-                                            >
-                                                <Download size={18} />
-                                                <span className="hidden sm:inline">Student List</span>
-                                            </button>
+
                                             <button
                                                 onClick={async () => {
                                                     try {
@@ -692,6 +678,53 @@ const AdminDashboard = () => {
                     )}
 
                 </>
+            )}
+
+            {/* Clear All Confirmation Modal */}
+            {showClearConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-200 dark:border-gray-800 animate-slide-up">
+                        <div className="flex items-center gap-3 mb-4 text-red-600 dark:text-red-400">
+                            <div className="p-3 rounded-full bg-red-100 dark:bg-red-900/30">
+                                <AlertCircle size={24} />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Reset Everything?</h3>
+                        </div>
+                        <p className="text-gray-600 dark:text-gray-400 mb-2">
+                            This will clear all student data and allocations.
+                        </p>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-500 mb-6">
+                            You will need to re-upload the PDF to generate new seating.
+                        </p>
+                        
+                        <div className="flex gap-3 justify-end mt-8">
+                            <button
+                                onClick={() => setShowClearConfirm(false)}
+                                disabled={isLoading}
+                                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleClear}
+                                disabled={isLoading}
+                                className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <RefreshCw size={16} className="animate-spin" />
+                                        Clearing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Trash2 size={16} />
+                                        Clear All Data
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

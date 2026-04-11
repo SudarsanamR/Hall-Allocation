@@ -26,9 +26,15 @@ const HallForm = ({ onSubmit, onCancel, initialData }: HallFormProps) => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        const maxCapacity = formData.rows * formData.columns;
+        
+        if (isCustomCapacity && customCapacity > maxCapacity) {
+            return; // Prevent submission if invalid
+        }
+
         onSubmit({
             ...formData,
-            capacity: isCustomCapacity ? customCapacity : formData.rows * formData.columns
+            capacity: isCustomCapacity ? customCapacity : maxCapacity
         });
     };
 
@@ -123,14 +129,21 @@ const HallForm = ({ onSubmit, onCancel, initialData }: HallFormProps) => {
                             type="number"
                             value={customCapacity}
                             onChange={(e) => setCustomCapacity(parseInt(e.target.value) || 0)}
-                            className="input-field"
+                            className={`input-field ${customCapacity > formData.rows * formData.columns ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                             min={1}
+                            max={formData.rows * formData.columns}
                             placeholder="Enter max capacity"
                             aria-label="Custom Capacity"
                         />
-                        <p className="text-xs text-gray-500 mt-1">
-                            Use this to limit seats regardless of rows/columns
-                        </p>
+                        {customCapacity > formData.rows * formData.columns ? (
+                            <p className="text-xs text-red-500 mt-1">
+                                Capacity cannot exceed maximum dimension seats ({formData.rows * formData.columns})
+                            </p>
+                        ) : (
+                            <p className="text-xs text-gray-500 mt-1">
+                                Use this to limit seats regardless of rows/columns
+                            </p>
+                        )}
                     </div>
                 )}
 

@@ -110,6 +110,46 @@ export const getSessionSeating = async (session: string): Promise<SeatingResult>
     return response.data;
 };
 
+// Universal Download Helper (Tauri native save + fallback)
+const handleFileDownload = async (blob: Blob, defaultFilename: string) => {
+    try {
+        // @ts-ignore
+        if (window.__TAURI_INTERNALS__) {
+            const { save } = await import('@tauri-apps/plugin-dialog');
+            const { writeFile } = await import('@tauri-apps/plugin-fs');
+            
+            const extParts = defaultFilename.split('.');
+            const extension = extParts.length > 1 ? extParts.pop()! : '*';
+
+            const filePath = await save({
+                defaultPath: defaultFilename,
+                filters: [{
+                    name: extension.toUpperCase() + ' File',
+                    extensions: [extension]
+                }]
+            });
+
+            if (filePath) {
+                const arrayBuffer = await blob.arrayBuffer();
+                await writeFile(filePath, new Uint8Array(arrayBuffer));
+            }
+            return;
+        }
+    } catch (e) {
+        console.warn("Tauri native save failed, trying browser download", e);
+    }
+
+    // Fallback to browser
+    const href = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = href;
+    link.setAttribute('download', defaultFilename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(href);
+};
+
 // Download Excel
 export const downloadHallWiseExcel = async (session?: string): Promise<void> => {
     const url = session
@@ -118,10 +158,6 @@ export const downloadHallWiseExcel = async (session?: string): Promise<void> => 
 
     try {
         const response = await api.get(url, { responseType: 'blob' });
-        const href = window.URL.createObjectURL(response.data);
-        const link = document.createElement('a');
-        link.href = href;
-
         const contentDisposition = response.headers['content-disposition'];
         let filename = 'Hall_Sketch.xlsx';
         if (contentDisposition) {
@@ -130,11 +166,7 @@ export const downloadHallWiseExcel = async (session?: string): Promise<void> => 
                 filename = fileNameMatch[1];
         }
 
-        link.setAttribute('download', filename);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(href);
+        await handleFileDownload(response.data, filename);
     } catch (error) {
         console.error("Download failed", error);
         throw error;
@@ -148,10 +180,6 @@ export const downloadStudentWiseExcel = async (session?: string): Promise<void> 
 
     try {
         const response = await api.get(url, { responseType: 'blob' });
-        const href = window.URL.createObjectURL(response.data);
-        const link = document.createElement('a');
-        link.href = href;
-
         const contentDisposition = response.headers['content-disposition'];
         let filename = 'Student_Allocation.xlsx';
         if (contentDisposition) {
@@ -160,11 +188,7 @@ export const downloadStudentWiseExcel = async (session?: string): Promise<void> 
                 filename = fileNameMatch[1];
         }
 
-        link.setAttribute('download', filename);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(href);
+        await handleFileDownload(response.data, filename);
     } catch (error) {
         console.error("Download failed", error);
         throw error;
@@ -226,14 +250,9 @@ export const exportAllocationsJSON = async (): Promise<void> => {
 
         // Create and download JSON file
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const href = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = href;
-        link.setAttribute('download', `seat_allocations_${new Date().toISOString().split('T')[0]}.json`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(href);
+        const defaultFilename = `seat_allocations_${new Date().toISOString().split('T')[0]}.json`;
+        
+        await handleFileDownload(blob, defaultFilename);
     } catch (error) {
         console.error("Export failed", error);
         throw error;

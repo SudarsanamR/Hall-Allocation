@@ -410,12 +410,13 @@ def download_hall_wise():
     
     try:
         excel_file = generate_hall_wise_excel(result)
-        clean_name = session_key.replace('_', ' ')
+        exam_date = session_key.rsplit('_', 1)[0]
+        safe_date = exam_date.replace('/', '-').replace('\\', '-')
         return send_file(
             excel_file,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             as_attachment=True,
-            download_name=f'Hall Sketch {clean_name}.xlsx'
+            download_name=f'{safe_date}.xlsx'
         )
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -440,12 +441,13 @@ def download_student_wise():
     
     try:
         excel_file = generate_student_wise_excel(result)
-        clean_name = session_key.replace('_', ' ')
+        exam_date = session_key.rsplit('_', 1)[0]
+        safe_date = exam_date.replace('/', '-').replace('\\', '-')
         return send_file(
             excel_file,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             as_attachment=True,
-            download_name=f'Student Allocation {clean_name}.xlsx'
+            download_name=f'{safe_date} Students.xlsx'
         )
     except Exception as e:
         return jsonify({'error': str(e)}), 500

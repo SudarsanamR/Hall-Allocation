@@ -5,7 +5,7 @@ import HallForm from '../components/halls/HallForm';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { getHalls, createHall, updateHall, deleteHall, initializeDefaultHalls } from '../utils/api';
 import type { Hall, HallFormData } from '../types';
-import { RefreshCw, AlertCircle, ArrowLeft } from 'lucide-react';
+import { RefreshCw, AlertCircle } from 'lucide-react';
 
 const HallManagement = () => {
     const navigate = useNavigate();
@@ -98,18 +98,6 @@ const HallManagement = () => {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="flex items-center gap-4 mb-6">
-                <button
-                    onClick={() => navigate('/admin')}
-                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
-                    title="Back to Dashboard"
-                    aria-label="Back to Dashboard"
-                >
-                    <ArrowLeft size={24} />
-                </button>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Hall Configuration</h1>
-            </div>
-
             {error && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 dark:bg-red-900/20 dark:border-red-800/50">
                     <AlertCircle className="text-red-600 flex-shrink-0 dark:text-red-400" size={20} />

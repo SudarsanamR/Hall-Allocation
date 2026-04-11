@@ -30,8 +30,8 @@ def get_snake_seat_number(row_idx: int, col_idx: int, num_rows: int) -> int:
 
 def get_exam_info(seating_result: SeatingResult) -> tuple:
     """Extract exam date and session from first student."""
-    exam_date = "NOV/DEC 2025"
-    session = "FN"
+    exam_date = ""
+    session = ""
     date_str = ""
     for hall_seating in seating_result.halls:
         for row in hall_seating.grid:
@@ -140,7 +140,7 @@ def _write_seating_sheet(ws, halls, exam_date, session):
         excel_data_cols = num_cols * 2
         
         # Title row
-        title_text = "GCE : : ERODE - 638 316 - ANNA UNIVERSITY EXAMS - HALL  SKETCH - NOV/DEC 2025"
+        title_text = f"GCE : : ERODE - 638 316 - ANNA UNIVERSITY EXAMS - HALL  SKETCH - {exam_date}"
         ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=excel_data_cols)
         title_cell = ws.cell(row=current_row, column=1, value=title_text)
         title_cell.font = TITLE_FONT
@@ -294,7 +294,7 @@ def _write_nb_sheet(ws, dept_data, date_str, session):
     """Write the NB sheet with department-wise breakdown."""
     # Title
     ws.merge_cells('A1:E1')
-    title_cell = ws.cell(row=1, column=1, value="GCE : : ERODE - ANNA UNIVERSITY EXAMS - NOV/DEC 2025")
+    title_cell = ws.cell(row=1, column=1, value=f"GCE : : ERODE - ANNA UNIVERSITY EXAMS - {date_str}")
     title_cell.font = TITLE_FONT
     title_cell.alignment = CENTER_ALIGN
     
@@ -374,7 +374,7 @@ def _write_auditorium_sheet(ws, auditorium_halls, exam_date, session):
         excel_data_cols = num_cols * 2
         
         # Title
-        title_text = "GCE : : ERODE - 638 316 - ANNA UNIVERSITY EXAMS - \nHALL  SKETCH - NOV/DEC 2025"
+        title_text = f"GCE : : ERODE - 638 316 - ANNA UNIVERSITY EXAMS - \nHALL  SKETCH - {exam_date}"
         ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=excel_data_cols)
         title_cell = ws.cell(row=current_row, column=1, value=title_text)
         title_cell.font = TITLE_FONT
@@ -478,7 +478,7 @@ def _write_subject_wise_sheet(ws, subject_data, date_str, session):
     """Write the SUBJECT WISE sheet — registration numbers listed vertically per subject."""
     # Title
     ws.merge_cells('A1:F1')
-    title_cell = ws.cell(row=1, column=1, value="GCE : : ERODE - ANNA UNIVERSITY EXAMS - NOV/DEC 2025")
+    title_cell = ws.cell(row=1, column=1, value=f"GCE : : ERODE - ANNA UNIVERSITY EXAMS - {date_str}")
     title_cell.font = TITLE_FONT
     title_cell.alignment = CENTER_ALIGN
 
@@ -533,14 +533,31 @@ def generate_student_wise_excel(seating_result: SeatingResult) -> BytesIO:
     output = BytesIO()
     data = []
     for allocation in seating_result.studentAllocation:
+        if isinstance(allocation, dict):
+            reg = allocation.get('registerNumber') or allocation.get('register_number')
+            sub = allocation.get('subject') or allocation.get('subject_code')
+            dept = allocation.get('department')
+            hall = allocation.get('hallName') or allocation.get('hall_name')
+            seat = allocation.get('seatNumber') or allocation.get('seat_number')
+            row = allocation.get('row', 0)
+            col = allocation.get('col', 0)
+        else:
+            reg = getattr(allocation, 'registerNumber', getattr(allocation, 'register_number', ''))
+            sub = getattr(allocation, 'subject', getattr(allocation, 'subject_code', ''))
+            dept = getattr(allocation, 'department', '')
+            hall = getattr(allocation, 'hallName', getattr(allocation, 'hall_name', ''))
+            seat = getattr(allocation, 'seatNumber', getattr(allocation, 'seat_number', ''))
+            row = getattr(allocation, 'row', 0)
+            col = getattr(allocation, 'col', 0)
+
         data.append({
-            'Registration Number': allocation.register_number,
-            'Subject': allocation.subject,
-            'Department': allocation.department,
-            'Hall': allocation.hallName,
-            'Seat Number': allocation.seatNumber,
-            'Row': allocation.row + 1,
-            'Column': allocation.col + 1
+            'Registration Number': reg,
+            'Subject': sub,
+            'Department': dept,
+            'Hall': hall,
+            'Seat Number': seat,
+            'Row': row + 1,
+            'Column': col + 1
         })
     df = pd.DataFrame(data)
     df = df.sort_values(['Registration Number'])
