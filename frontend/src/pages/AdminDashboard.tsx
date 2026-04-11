@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, Download, RefreshCw, LayoutGrid, Trash2, Settings, Share2 } from 'lucide-react';
+import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, RefreshCw, LayoutGrid, Trash2, Settings, Share2 } from 'lucide-react';
 import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, getSessionSeating, clearAllocations, getSessions, exportAllocationsJSON, healthCheck } from '../utils/api';
 import type { SeatingResult, UploadFileResponse, Stats } from '../types';
 import SeatingGrid from '../components/seating/SeatingGrid';
@@ -8,7 +7,7 @@ import StatCards from '../components/layout/StatCards';
 import ConfigurableSubjects from '../components/admin/ConfigurableSubjects';
 
 const AdminDashboard = () => {
-    const navigate = useNavigate();
+
     const [activeTab, setActiveTab] = useState<'seating' | 'config'>('seating');
     // State for Upload
     const [uploading, setUploading] = useState(false);

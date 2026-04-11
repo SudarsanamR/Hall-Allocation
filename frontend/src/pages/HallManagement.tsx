@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import HallManager from '../components/halls/HallManager';
 import HallForm from '../components/halls/HallForm';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -8,7 +8,7 @@ import type { Hall, HallFormData } from '../types';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 
 const HallManagement = () => {
-    const navigate = useNavigate();
+
     const [halls, setHalls] = useState<Hall[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
