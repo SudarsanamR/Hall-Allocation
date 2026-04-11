@@ -1,184 +1,48 @@
 import axios from 'axios';
-import type { Hall, Student, UploadFileResponse, SeatingResult, AdminUser, AuditLog, HallFormData, GenericResponse, AuthResponse, SecurityQuestionResponse } from '../types';
+import type { Hall, Student, UploadFileResponse, SeatingResult, HallFormData } from '../types';
 
-// Environment-aware API URL configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL ||
-    (import.meta.env.PROD
-        ? 'https://hall-allocation.onrender.com/api'
-        : 'http://localhost:5001/api'
-    );
-
-// Only log in development
-if (import.meta.env.DEV) {
-    console.log('🔌 API Base URL:', API_BASE_URL);
-}
+// Localhost-only API URL (Tauri desktop app - offline mode)
+const API_BASE_URL = 'http://127.0.0.1:5001/api';
 
 const api = axios.create({
     baseURL: API_BASE_URL,
     timeout: 15000,
-    withCredentials: true, // Important for Sessions
+    withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
-let csrfToken: string | null = null;
-
-export const getCsrfToken = () => csrfToken;
-
-export const fetchCsrfToken = async () => {
-    try {
-        const response = await api.get('/csrf-token');
-        csrfToken = response.data.csrf_token;
-        if (csrfToken) {
-            api.defaults.headers.common['X-CSRFToken'] = csrfToken;
-        }
-        return csrfToken;
-    } catch (error) {
-        console.error('Failed to fetch CSRF token:', error);
-    }
-};
+// Suppress network error toast during backend startup (sidecar takes 3-5s to boot)
+let startupGracePeriod = true;
+setTimeout(() => { startupGracePeriod = false; }, 30000); // 30s grace for slower machines
 
 // Interceptors
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        startupGracePeriod = false; // Backend is up, end grace period immediately
+        window.dispatchEvent(new CustomEvent('network:success'));
+        return response;
+    },
     async (error) => {
-        // Network error (no internet, server down, etc.)
-        if (!error.response) {
-            // Dispatch event for components to show network status
+        // Network error (server down, etc.)
+        if (!error.response && !startupGracePeriod) {
             window.dispatchEvent(new CustomEvent('network:error', {
-                detail: { message: 'Unable to connect to the server. Please check your internet connection.' }
+                detail: { message: 'Unable to connect to the local server. Please restart the application.' }
             }));
         }
-
-        // CSRF Retry
-        if (error.response?.status === 400 && error.response?.data?.message?.includes('CSRF')) {
-            await fetchCsrfToken();
-            if (csrfToken) {
-                error.config.headers['X-CSRFToken'] = csrfToken;
-                return api.request(error.config);
-            }
-        }
-
-        // 401 Unauthorized - Session Expired or Invalid
-        if (error.response?.status === 401) {
-            // Dispatch event for AuthContext to handle (clear state, redirect)
-            window.dispatchEvent(new Event('auth:unauthorized'));
-            // Optionally clear storage here too as redundancy
-            localStorage.removeItem('isAuthenticated');
-            // Do not redirect if checking auth status (e.g. /me) to avoid infinite loops if handled gracefully
-            if (!error.config.url?.endsWith('/auth/me')) {
-                // The Context will handle redirect
-            }
-        }
-
         return Promise.reject(error);
     }
 );
-
-// Authentication
-export const login = async (username: string, password: string): Promise<AuthResponse> => {
-    try {
-        const response = await api.post<AuthResponse>('/auth/login', { username, password });
-        return response.data;
-    } catch (error) {
-        if (axios.isAxiosError(error)) {
-            // Network error (no internet, server down, etc.)
-            if (!error.response) {
-                return {
-                    success: false,
-                    message: 'Network error: Unable to connect to the server. Please check your internet connection.'
-                };
-            }
-            return error.response.data as AuthResponse;
-        }
-        return { success: false, message: 'Login failed' };
-    }
-};
-
-export const logout = async (): Promise<void> => {
-    await api.post('/auth/logout');
-};
-
-export const getCurrentUser = async (): Promise<{ authenticated: boolean; user?: AdminUser }> => {
-    try {
-        const response = await api.get('/auth/me');
-        return response.data;
-    } catch {
-        return { authenticated: false };
-    }
-};
-
-export const registerAdmin = async (data: any): Promise<GenericResponse> => {
-    try {
-        const response = await api.post<GenericResponse>('/auth/register', data);
-        return response.data;
-    } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
-            return error.response.data as GenericResponse;
-        }
-        return { success: false, message: 'Registration failed' };
-    }
-};
-
-export const getSecurityQuestion = async (username: string): Promise<SecurityQuestionResponse> => {
-    try {
-        const response = await api.post<SecurityQuestionResponse>('/auth/security-task', { username });
-        return response.data;
-    } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
-            return error.response.data as SecurityQuestionResponse;
-        }
-        return { success: false, message: 'User not found' };
-    }
-};
-
-export const resetPassword = async (data: any): Promise<GenericResponse> => {
-    try {
-        const response = await api.post<GenericResponse>('/auth/reset-password', data);
-        return response.data;
-    } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
-            return error.response.data as GenericResponse;
-        }
-        return { success: false, message: 'Reset failed' };
-    }
-};
-
-export const changePassword = async (data: any): Promise<GenericResponse> => {
-    try {
-        const response = await api.post<GenericResponse>('/auth/change-password', data);
-        return response.data;
-    } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
-            return error.response.data as GenericResponse;
-        }
-        return { success: false, message: 'Change failed' };
-    }
-};
-
-export const updateProfile = async (data: { username?: string; current_password: string; new_password?: string }): Promise<AuthResponse> => {
-    try {
-        const response = await api.put<AuthResponse>('/auth/update-profile', data);
-        return response.data;
-    } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
-            return error.response.data as AuthResponse;
-        }
-        return { success: false, message: 'Update failed' };
-    }
-};
 
 // File Upload
 export const uploadFile = async (file: File): Promise<UploadFileResponse> => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await axios.post(`${API_BASE_URL}/upload`, formData, {
-        withCredentials: true, // Added for authentication
+    const response = await api.post('/upload', formData, {
         headers: {
             'Content-Type': 'multipart/form-data',
-            'X-CSRFToken': csrfToken,
         },
     });
 
@@ -233,7 +97,7 @@ export const generateSeating = async (): Promise<{ success: boolean, sessions: s
 };
 
 export const getSessions = async (): Promise<{ success: boolean, sessions: string[] }> => {
-    const response = await api.get('/sessions'); // Note: bp prefix is /api, route is /sessions. So /api/sessions. Wait, bp url_prefix is /api in seating.py? Yes.  
+    const response = await api.get('/sessions');
     return response.data;
 };
 
@@ -246,7 +110,46 @@ export const getSessionSeating = async (session: string): Promise<SeatingResult>
     return response.data;
 };
 
-// Download Excel
+// Universal Download Helper (Tauri native save + fallback)
+const handleFileDownload = async (blob: Blob, defaultFilename: string) => {
+    try {
+        // @ts-ignore
+        if (window.__TAURI_INTERNALS__) {
+            const { save } = await import('@tauri-apps/plugin-dialog');
+            const { writeFile } = await import('@tauri-apps/plugin-fs');
+            
+            const extParts = defaultFilename.split('.');
+            const extension = extParts.length > 1 ? extParts.pop()! : '*';
+
+            const filePath = await save({
+                defaultPath: defaultFilename,
+                filters: [{
+                    name: extension.toUpperCase() + ' File',
+                    extensions: [extension]
+                }]
+            });
+
+            if (filePath) {
+                const arrayBuffer = await blob.arrayBuffer();
+                await writeFile(filePath, new Uint8Array(arrayBuffer));
+            }
+            return;
+        }
+    } catch (e) {
+        console.warn("Tauri native save failed, trying browser download", e);
+    }
+
+    // Fallback to browser
+    const href = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = href;
+    link.setAttribute('download', defaultFilename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(href);
+};
+
 // Download Excel
 export const downloadHallWiseExcel = async (session?: string): Promise<void> => {
     const url = session
@@ -255,13 +158,6 @@ export const downloadHallWiseExcel = async (session?: string): Promise<void> => 
 
     try {
         const response = await api.get(url, { responseType: 'blob' });
-
-        // Create blob link to download
-        const href = window.URL.createObjectURL(response.data);
-        const link = document.createElement('a');
-        link.href = href;
-
-        // Extract filename from header or default
         const contentDisposition = response.headers['content-disposition'];
         let filename = 'Hall_Sketch.xlsx';
         if (contentDisposition) {
@@ -270,13 +166,7 @@ export const downloadHallWiseExcel = async (session?: string): Promise<void> => 
                 filename = fileNameMatch[1];
         }
 
-        link.setAttribute('download', filename);
-        document.body.appendChild(link);
-        link.click();
-
-        // Clean up
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(href);
+        await handleFileDownload(response.data, filename);
     } catch (error) {
         console.error("Download failed", error);
         throw error;
@@ -289,13 +179,7 @@ export const downloadStudentWiseExcel = async (session?: string): Promise<void> 
         : `/download/student-wise`;
 
     try {
-        // Use api instance which has credentials
         const response = await api.get(url, { responseType: 'blob' });
-
-        const href = window.URL.createObjectURL(response.data);
-        const link = document.createElement('a');
-        link.href = href;
-
         const contentDisposition = response.headers['content-disposition'];
         let filename = 'Student_Allocation.xlsx';
         if (contentDisposition) {
@@ -304,12 +188,7 @@ export const downloadStudentWiseExcel = async (session?: string): Promise<void> 
                 filename = fileNameMatch[1];
         }
 
-        link.setAttribute('download', filename);
-        document.body.appendChild(link);
-        link.click();
-
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(href);
+        await handleFileDownload(response.data, filename);
     } catch (error) {
         console.error("Download failed", error);
         throw error;
@@ -327,26 +206,55 @@ export const searchStudent = async (registerNumber: string): Promise<any> => {
     const response = await api.post('/search', { registerNumber });
     return response.data;
 };
-// Admin Management
-export const getAdmins = async (): Promise<AdminUser[]> => {
-    const response = await api.get('/admin/users');
-    return response.data.users;
-};
 
-export const verifyAdmin = async (id: number): Promise<void> => {
-    await api.put(`/admin/users/${id}/verify`);
-};
+// Subject Configuration
+export interface SubjectConfig {
+    subject_code: string;
+    is_default: boolean;
+}
 
-export const deleteAdmin = async (id: number): Promise<void> => {
-    await api.delete(`/admin/users/${id}`);
-};
+export interface SubjectConfigsResponse {
+    success: boolean;
+    priority_subjects: SubjectConfig[];
+    drawing_subjects: SubjectConfig[];
+}
 
-export const getAuditLogs = async (): Promise<AuditLog[]> => {
-    const response = await api.get('/admin/logs');
-    return response.data.logs;
-};
-
-export const clearAuditLogs = async (): Promise<void> => {
-    const response = await api.delete('/admin/logs');
+export const getSubjectConfigs = async (): Promise<SubjectConfigsResponse> => {
+    const response = await api.get('/config/subjects');
     return response.data;
+};
+
+export const addSubjectConfig = async (type: 'priority' | 'drawing', subject_code: string): Promise<void> => {
+    await api.post('/config/subjects', { type, subject_code });
+};
+
+export const deleteSubjectConfig = async (type: 'priority' | 'drawing', subject_code: string): Promise<void> => {
+    await api.delete(`/config/subjects/${subject_code}`, { params: { type } });
+};
+
+// Export Allocations as JSON (for student web viewer)
+// Health check for backend readiness
+export const healthCheck = async (): Promise<boolean> => {
+    try {
+        const response = await api.get('/health');
+        return response.data?.status === 'ok';
+    } catch {
+        return false;
+    }
+};
+
+export const exportAllocationsJSON = async (): Promise<void> => {
+    try {
+        const response = await api.get('/export/allocations');
+        const data = response.data;
+
+        // Create and download JSON file
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const defaultFilename = `seat_allocations_${new Date().toISOString().split('T')[0]}.json`;
+        
+        await handleFileDownload(blob, defaultFilename);
+    } catch (error) {
+        console.error("Export failed", error);
+        throw error;
+    }
 };

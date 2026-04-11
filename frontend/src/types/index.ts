@@ -91,36 +91,10 @@ export interface HallFormData {
     block: string;
     rows: number;
     columns: number;
-    capacity?: number; // Optional manual override
-}
-
-export interface AdminUser {
-    id: number;
-    username: string;
-    role: 'super_admin' | 'admin';
-    is_verified: boolean;
-    created_at: string;
-    last_login: string | null;
-}
-
-export interface AuditLog {
-    id: number;
-    admin_id: number;
-    admin_username?: string;
-    action: string;
-    details: string;
-    timestamp: string;
+    capacity?: number;
 }
 
 export interface GenericResponse {
     success: boolean;
     message?: string;
-}
-
-export interface AuthResponse extends GenericResponse {
-    user?: AdminUser;
-}
-
-export interface SecurityQuestionResponse extends GenericResponse {
-    question?: string;
 }

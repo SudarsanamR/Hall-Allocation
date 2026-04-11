@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Your Seat — GCE Erode Exam Hall Allocation</title>
+    <meta name="description"
+        content="Search your exam seat allocation by register number. Government College of Engineering, Erode.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Top Bar -->
+    <header class="topbar">
+        <div class="topbar-inner">
+            <div class="topbar-left">
+                <a href="https://www.annauniv.edu" target="_blank" rel="noopener noreferrer">
+                    <img src="https://upload.wikimedia.org/wikipedia/en/thumb/4/49/Anna_University_Logo.svg/220px-Anna_University_Logo.svg.png"
+                        alt="Anna University" class="logo">
+                </a>
+            </div>
+            <div class="topbar-center">
+                <h1 class="college-title">Government College of Engineering, Erode</h1>
+                <h2 class="subtitle">University Exam Hall Allocation</h2>
+            </div>
+            <div class="topbar-right">
+                <button id="themeToggle" class="theme-btn" aria-label="Toggle theme">
+                    <svg id="sunIcon" class="icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <circle cx="12" cy="12" r="5" />
+                        <line x1="12" y1="1" x2="12" y2="3" />
+                        <line x1="12" y1="21" x2="12" y2="23" />
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                        <line x1="1" y1="12" x2="3" y2="12" />
+                        <line x1="21" y1="12" x2="23" y2="12" />
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                    </svg>
+                    <svg id="moonIcon" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                    </svg>
+                </button>
+                <div class="logo-divider"></div>
+                <a href="https://gcee.ac.in" target="_blank" rel="noopener noreferrer">
+                    <img src="https://gcee.ac.in/images/Logo.png" alt="GCEE" class="logo">
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Header -->
+            <div class="header-section">
+                <h1 class="gradient-title">Check Your Seat</h1>
+                <p class="header-subtitle">Enter your register number to find your exam hall.</p>
+            </div>
+
+            <!-- Data Source Selector -->
+            <div id="dataSection" class="data-source-card">
+                <div class="data-source-options">
+                    <button id="loadUrlBtn" class="data-btn active" onclick="showUrlInput()">
+                        <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                        </svg>
+                        Load from URL
+                    </button>
+                    <button id="loadFileBtn" class="data-btn" onclick="showFileInput()">
+                        <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        Upload File
+                    </button>
+                </div>
+
+                <!-- URL Input -->
+                <div id="urlInputSection">
+                    <div class="input-group">
+                        <input type="text" id="jsonUrl" placeholder="Enter URL to allocations JSON..."
+                            class="text-input" value="">
+                        <button onclick="loadFromUrl()" class="load-btn">Load</button>
+                    </div>
+                </div>
+
+                <!-- File Input -->
+                <div id="fileInputSection" class="hidden">
+                    <div class="file-drop-zone" id="dropZone">
+                        <input type="file" id="fileInput" accept=".json" class="hidden">
+                        <p class="drop-text">Drop JSON file here or <span class="link-text"
+                                onclick="document.getElementById('fileInput').click()">browse</span></p>
+                    </div>
+                </div>
+
+                <!-- Status -->
+                <div id="dataStatus" class="hidden status-bar">
+                    <span class="status-dot"></span>
+                    <span id="statusText"></span>
+                </div>
+            </div>
+
+            <!-- Search Form -->
+            <div id="searchSection" class="search-card hidden">
+                <form id="searchForm" onsubmit="handleSearch(event)">
+                    <div class="search-input-wrapper">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input type="text" id="registerInput" placeholder="Register Number (12 digits)" maxlength="12"
+                            class="search-input" aria-label="Register Number">
+                    </div>
+                    <button type="submit" id="searchBtn" class="search-btn" disabled>
+                        Search
+                        <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Error -->
+            <div id="errorMsg" class="error-card hidden"></div>
+
+            <!-- Results -->
+            <div id="results" class="results-section hidden"></div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Government College of Engineering, Erode — Exam Cell</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

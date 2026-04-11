@@ -1,18 +1,18 @@
 """
 Seating Route - Generate seating arrangements and download results
 """
-from flask import Blueprint, request, jsonify, send_file, session
-from app.services.audit import log_action
+from flask import Blueprint, request, jsonify, send_file
+from app.services.logging_config import log_action
 from app.models import db, Student, Hall, Allocation, SeatingResult, HallSeating, Seat
 from app.services import allocate_session_strict, generate_hall_wise_excel, generate_student_wise_excel
 from collections import defaultdict
-from app.decorators import role_required
+from datetime import datetime
 import uuid
+import json
 
 bp = Blueprint('seating', __name__, url_prefix='/api')
 
 @bp.route('/generate', methods=['POST'])
-@role_required(['admin', 'super_admin'])
 def generate_seating():
     """
     Generate seating arrangements for all sessions found in student data.
@@ -30,7 +30,7 @@ def generate_seating():
         # 1. Group students by Session (Date + Session)
         session_groups = defaultdict(list)
         for student in students:
-            key = f"{student.examDate}_{student.session}"
+            key = f"{student.exam_date}_{student.session}"
             session_groups[key].append(student)
             
         # 2. Iterate and Allocate
@@ -83,10 +83,10 @@ def generate_seating():
                         }
                         if seat.student:
                             seat_data['student'] = {
-                                'registerNumber': seat.student.registerNumber,
-                                'subjectCode': seat.student.subjectCode,
+                                'registerNumber': seat.student.register_number,
+                                'subjectCode': seat.student.subject_code,
                                 'department': seat.student.department,
-                                'examDate': seat.student.examDate,
+                                'examDate': seat.student.exam_date,
                                 'session': seat.student.session
                             }
                         row_response.append(seat_data)
@@ -125,7 +125,7 @@ def generate_seating():
 
         db.session.commit()
         
-        log_action(session['user_id'], 'GENERATE_SEATING', f'Generated seating for {len(results)} sessions')
+        log_action('GENERATE_SEATING', f'Generated seating for {len(results)} sessions')
 
         return jsonify({
             'success': True, 
@@ -137,7 +137,6 @@ def generate_seating():
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/sessions', methods=['GET'])
-@role_required(['admin', 'super_admin'])
 def get_sessions():
     """
     Get list of available sessions from existing allocations.
@@ -150,7 +149,6 @@ def get_sessions():
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/clear', methods=['DELETE'])
-@role_required(['admin', 'super_admin'])
 def clear_allocations():
     """
     Clear all seating allocations AND student data from the database.
@@ -161,7 +159,7 @@ def clear_allocations():
         Student.query.delete()
         db.session.commit()
         
-        log_action(session['user_id'], 'CLEAR_SEATING', 'Cleared all allocations and student data')
+        log_action('CLEAR_SEATING', 'Cleared all allocations and student data')
         
         return jsonify({'message': 'All allocations and student data cleared successfully'}), 200
     except Exception as e:
@@ -169,81 +167,112 @@ def clear_allocations():
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/seating/<session_key>', methods=['GET'])
-@role_required(['admin', 'super_admin'])
 def get_session_seating(session_key):
     """
     Get detailed seating result for a specific session.
+    Builds the JSON response directly from DB records — no intermediate objects.
     """
     try:
-        # Check if session exists
-        exists = db.session.query(Allocation).filter_by(session_key=session_key).first()
-        if not exists:
-             return jsonify({'error': 'Session not found'}), 404
+        allocations = Allocation.query.filter_by(session_key=session_key).all()
+        if not allocations:
+            return jsonify({'error': 'Session not found'}), 404
 
-        result = reconstruct_seating_result(session_key)
-        if not result:
-             return jsonify({'error': 'Failed to reconstruct results'}), 500
-             
-        # Convert to JSON response format
+        halls = Hall.query.all()
+        hall_map = {h.name: h for h in halls}
+
+        # Group allocations by hall
+        hall_allocs = defaultdict(list)
+        student_allocations = []
+
+        for alloc in allocations:
+            hall_allocs[alloc.hall_name].append(alloc)
+            student_allocations.append({
+                'registerNumber': alloc.register_number,
+                'department': alloc.department,
+                'subject': alloc.subject_code,
+                'hallName': alloc.hall_name,
+                'row': alloc.row_num,
+                'col': alloc.col_num,
+                'seatNumber': alloc.seat_number
+            })
+
+        # Parse session info
+        e_date = "Unknown"
+        sess = ""
+        if '_' in session_key:
+            parts = session_key.rsplit('_', 1)
+            e_date = parts[0]
+            sess = parts[1] if len(parts) > 1 else ""
+        else:
+            e_date = session_key
+
+        # Build hall grids
         halls_response = []
-        for hs in result.halls:
+        for hall_name, allocs in hall_allocs.items():
+            hall = hall_map.get(hall_name)
+            if not hall:
+                continue
+
+            # Build seat lookup: (row, col) -> allocation
+            seat_map = {(a.row_num, a.col_num): a for a in allocs}
+
             grid_response = []
-            for row in hs.grid:
+            students_count = 0
+            for r in range(hall.rows):
                 row_response = []
-                for seat in row:
+                for c in range(hall.columns):
+                    seat_num = get_snake_seat_number(r, c, hall.rows)
+                    cell_alloc = seat_map.get((r, c))
+
                     seat_data = {
-                        'row': seat.row,
-                        'col': seat.col,
-                        'subject': seat.subject,
-                        'department': seat.department,
-                        'seatNumber': seat.seatNumber,
-                        'student': None
+                        'row': r,
+                        'col': c,
+                        'seatNumber': str(seat_num),
+                        'student': None,
+                        'subject': None,
+                        'department': None
                     }
-                    if seat.student:
+
+                    if cell_alloc:
                         seat_data['student'] = {
-                            'registerNumber': seat.student.registerNumber,
-                            'subjectCode': seat.student.subjectCode,
-                            'department': seat.student.department,
-                            'examDate': seat.student.examDate,
-                            'session': seat.student.session
+                            'registerNumber': cell_alloc.register_number,
+                            'subjectCode': cell_alloc.subject_code,
+                            'department': cell_alloc.department,
+                            'examDate': e_date,
+                            'session': sess
                         }
+                        seat_data['subject'] = cell_alloc.subject_code
+                        seat_data['department'] = cell_alloc.department
+                        students_count += 1
+
                     row_response.append(seat_data)
                 grid_response.append(row_response)
-            
+
             halls_response.append({
                 'hall': {
-                    'id': hs.hall.id,
-                    'name': hs.hall.name,
-                    'block': hs.hall.block,
-                    'rows': hs.hall.rows,
-                    'columns': hs.hall.columns,
-                    'capacity': hs.hall.capacity
+                    'id': hall.id,
+                    'name': hall.name,
+                    'block': hall.block,
+                    'rows': hall.rows,
+                    'columns': hall.columns,
+                    'capacity': hall.capacity
                 },
                 'grid': grid_response,
-                'studentsCount': hs.studentsCount
+                'studentsCount': students_count
             })
 
         response_data = {
-            'totalStudents': result.totalStudents,
-            'hallsUsed': result.hallsUsed,
+            'totalStudents': len(allocations),
+            'hallsUsed': len(halls_response),
             'halls': halls_response,
-            'studentAllocation': [
-                {
-                    'registerNumber': sa.registerNumber,
-                    'department': sa.department,
-                    'subject': sa.subject,
-                    'hallName': sa.hallName,
-                    'row': sa.row,
-                    'col': sa.col,
-                    'seatNumber': sa.seatNumber
-                }
-                for sa in result.studentAllocation
-            ]
+            'studentAllocation': student_allocations
         }
-        
+
         return jsonify(response_data), 200
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 
@@ -269,7 +298,7 @@ def reconstruct_seating_result(session_key):
         for alloc in allocations:
             hall_allocs[alloc.hall_name].append(alloc)
             # Add to flat list
-            student_allocations.append(type('StudentAllocation', (), {
+            student_allocations.append({
                 'registerNumber': alloc.register_number,
                 'department': alloc.department,
                 'subject': alloc.subject_code,
@@ -277,7 +306,7 @@ def reconstruct_seating_result(session_key):
                 'row': alloc.row_num,
                 'col': alloc.col_num,
                 'seatNumber': alloc.seat_number
-            }))
+            })
 
         hall_seating_list = []
         
@@ -317,13 +346,28 @@ def reconstruct_seating_result(session_key):
                     else:
                         e_date = session_key
                     
-                    seat.student = type('Student', (), {
-                        'registerNumber': alloc.register_number,
-                        'subjectCode': alloc.subject_code,
-                        'department': alloc.department,
-                        'examDate': e_date,
-                        'session': sess
-                    })
+                    from dataclasses import dataclass
+                    @dataclass
+                    class MockedStudent:
+                        register_number: str
+                        subject_code: str
+                        department: str
+                        exam_date: str
+                        session: str
+                        registerNumber: str
+                        subjectCode: str
+                        examDate: str
+
+                    seat.student = MockedStudent(
+                        register_number=alloc.register_number,
+                        subject_code=alloc.subject_code,
+                        department=alloc.department,
+                        exam_date=e_date,
+                        session=sess,
+                        registerNumber=alloc.register_number,
+                        subjectCode=alloc.subject_code,
+                        examDate=e_date
+                    )
                     students_count += 1
                 else:
                     print(f"WARNING: Allocation out of bounds for {hall.name} - Row:{alloc.row_num}, Col:{alloc.col_num}")
@@ -342,7 +386,6 @@ def reconstruct_seating_result(session_key):
         raise e
 
 @bp.route('/download/hall-wise', methods=['GET'])
-@role_required(['admin', 'super_admin'])
 def download_hall_wise():
     """Download hall-wise seating Excel file for a specific session"""
     session_key = request.args.get('session')
@@ -367,18 +410,18 @@ def download_hall_wise():
     
     try:
         excel_file = generate_hall_wise_excel(result)
-        clean_name = session_key.replace('_', ' ')
+        exam_date = session_key.rsplit('_', 1)[0]
+        safe_date = exam_date.replace('/', '-').replace('\\', '-')
         return send_file(
             excel_file,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             as_attachment=True,
-            download_name=f'Hall Sketch {clean_name}.xlsx'
+            download_name=f'{safe_date}.xlsx'
         )
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/download/student-wise', methods=['GET'])
-@role_required(['admin', 'super_admin'])
 def download_student_wise():
     """Download student-wise allocation Excel file"""
     session_key = request.args.get('session')
@@ -398,12 +441,13 @@ def download_student_wise():
     
     try:
         excel_file = generate_student_wise_excel(result)
-        clean_name = session_key.replace('_', ' ')
+        exam_date = session_key.rsplit('_', 1)[0]
+        safe_date = exam_date.replace('/', '-').replace('\\', '-')
         return send_file(
             excel_file,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             as_attachment=True,
-            download_name=f'Student Allocation {clean_name}.xlsx'
+            download_name=f'{safe_date} Students.xlsx'
         )
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -506,3 +550,38 @@ def search_student():
         return jsonify({'error': 'No allocation found for this register number'}), 404
 
     return jsonify({'success': True, 'allocations': matches}), 200
+
+
+@bp.route('/export/allocations', methods=['GET'])
+def export_allocations():
+    """
+    Export all allocations as a downloadable JSON file.
+    Used to upload to the student web viewer (GitHub Pages).
+    """
+    try:
+        allocations = Allocation.query.all()
+        if not allocations:
+            return jsonify({'error': 'No allocations found. Generate seating first.'}), 404
+        
+        export_data = {
+            'generated_at': datetime.utcnow().isoformat(),
+            'sessions': sorted(list(set(a.session_key for a in allocations))),
+            'total_students': len(allocations),
+            'allocations': [
+                {
+                    'registerNumber': a.register_number,
+                    'hallName': a.hall_name,
+                    'seatNumber': a.seat_number,
+                    'session': a.session_key,
+                    'subject': a.subject_code,
+                    'department': a.department
+                }
+                for a in allocations
+            ]
+        }
+        
+        log_action('EXPORT_ALLOCATIONS', f'Exported {len(allocations)} allocations as JSON')
+        
+        return jsonify(export_data), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

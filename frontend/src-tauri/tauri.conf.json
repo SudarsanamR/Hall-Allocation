@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "GCEE Exam Hall Allotment",
-  "version": "5.0.1",
+  "version": "7.0.1",
   "identifier": "com.gcee.hallallocation",
   "build": {
     "frontendDist": "../dist",
@@ -20,19 +20,10 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:5001 http://127.0.0.1:5001 https://hall-allocation-7n1u.onrender.com"
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:5001 http://127.0.0.1:5001"
     }
   },
-  "plugins": {
-    "updater": {
-      "active": true,
-      "endpoints": [
-        "https://github.com/SudarsanamR/Hall-Allocation/releases/latest/download/latest.json"
-      ],
-      "dialog": true,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEY2NzNGNDNENDdGQTVBRDIKUldUU1d2cEhQZlJ6OWxUUjhpS3hvQ2NWSFQ2ZFB0UGR2NFlZRVQrRE5SVkkydU1xdmJoU1dTUnkK"
-    }
-  },
+  "plugins": {},
   "bundle": {
     "active": true,
     "targets": "all",

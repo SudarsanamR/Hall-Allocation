@@ -1,22 +1,20 @@
 """
-Structured Logging Configuration for Flask Application
+Logging Configuration for Desktop Application
 """
 import logging
 import sys
 import os
-from datetime import datetime
+from logging.handlers import RotatingFileHandler
 
 def setup_logging(app=None):
     """
-    Configure structured logging for the application.
-    - Development: Colored console output with DEBUG level
-    - Production: JSON-formatted logs with INFO level
+    Configure structured logging for the desktop application.
+    - Colored console output with DEBUG level
+    - File logging with rotation
     """
-    is_production = os.environ.get('FLASK_ENV') == 'production' or os.environ.get('RENDER')
-    
     # Create logger
     logger = logging.getLogger('exam_hall')
-    logger.setLevel(logging.DEBUG if not is_production else logging.INFO)
+    logger.setLevel(logging.DEBUG)
     
     # Clear existing handlers
     logger.handlers.clear()
@@ -25,27 +23,17 @@ def setup_logging(app=None):
     if not os.path.exists('logs'):
         os.makedirs('logs')
 
-    # Console Handler
+    # Console Handler with colors
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.DEBUG if not is_production else logging.INFO)
-    
-    if is_production:
-        formatter = logging.Formatter(
-            '{"time": "%(asctime)s", "level": "%(levelname)s", "module": "%(module)s", "message": "%(message)s"}',
-            datefmt='%Y-%m-%dT%H:%M:%S'
-        )
-    else:
-        formatter = ColoredFormatter(
-            '%(asctime)s | %(levelname)-8s | %(module)s:%(lineno)d | %(message)s',
-            datefmt='%H:%M:%S'
-        )
-    
+    console_handler.setLevel(logging.DEBUG)
+    formatter = ColoredFormatter(
+        '%(asctime)s | %(levelname)-8s | %(module)s:%(lineno)d | %(message)s',
+        datefmt='%H:%M:%S'
+    )
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
-    # File Handlers (Strict Separation)
-    from logging.handlers import RotatingFileHandler
-    
+    # File Handlers
     # App Log - General Info/Debug
     app_handler = RotatingFileHandler('logs/server.log', maxBytes=10*1024*1024, backupCount=5)
     app_handler.setLevel(logging.INFO)
@@ -57,6 +45,14 @@ def setup_logging(app=None):
     error_handler.setLevel(logging.ERROR)
     error_handler.setFormatter(logging.Formatter('%(asctime)s | %(levelname)-8s | %(module)s | %(message)s'))
     logger.addHandler(error_handler)
+
+    # Action Log - All user actions (replaces audit log DB in auth-less mode)
+    action_handler = RotatingFileHandler('logs/actions.log', maxBytes=10*1024*1024, backupCount=5)
+    action_handler.setLevel(logging.INFO)
+    action_handler.setFormatter(logging.Formatter('%(asctime)s | %(message)s'))
+    action_logger = logging.getLogger('exam_hall.actions')
+    action_logger.addHandler(action_handler)
+    action_logger.setLevel(logging.INFO)
     
     # Attach to Flask app if provided
     if app:
@@ -67,7 +63,7 @@ def setup_logging(app=None):
 
 
 class ColoredFormatter(logging.Formatter):
-    """Custom formatter with colors for console output in development."""
+    """Custom formatter with colors for console output."""
     
     COLORS = {
         'DEBUG': '\033[36m',     # Cyan
@@ -117,3 +113,12 @@ def log_debug(message: str, **kwargs):
     if kwargs:
         message = f"{message} | {' '.join(f'{k}={v}' for k, v in kwargs.items())}"
     logger.debug(message)
+
+
+def log_action(action: str, details: str = None):
+    """Log a user action to the actions log file."""
+    action_logger = logging.getLogger('exam_hall.actions')
+    msg = f"ACTION: {action}"
+    if details:
+        msg += f" | {details}"
+    action_logger.info(msg)

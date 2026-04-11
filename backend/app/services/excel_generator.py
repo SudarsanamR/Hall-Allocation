@@ -30,14 +30,14 @@ def get_snake_seat_number(row_idx: int, col_idx: int, num_rows: int) -> int:
 
 def get_exam_info(seating_result: SeatingResult) -> tuple:
     """Extract exam date and session from first student."""
-    exam_date = "NOV/DEC 2025"
-    session = "FN"
+    exam_date = ""
+    session = ""
     date_str = ""
     for hall_seating in seating_result.halls:
         for row in hall_seating.grid:
             for seat in row:
                 if seat.student:
-                    exam_date = seat.student.examDate or exam_date
+                    exam_date = seat.student.exam_date or exam_date
                     session = seat.student.session or session
                     date_str = exam_date
                     return exam_date, session, date_str
@@ -57,6 +57,7 @@ def generate_hall_wise_excel(seating_result: SeatingResult) -> BytesIO:
     # Collect data for all sheets
     hall_data = []  # For HALL ALLO sheet
     dept_data = defaultdict(lambda: {'students': [], 'halls': defaultdict(list)})  # For NB sheet
+    subject_data = defaultdict(list)  # For SUBJECT WISE sheet: subject -> [reg_numbers]
     regular_halls = []
     auditorium_halls = []
     
@@ -77,10 +78,11 @@ def generate_hall_wise_excel(seating_result: SeatingResult) -> BytesIO:
         for row in hall_seating.grid:
             for seat in row:
                 if seat.student:
-                    subject_counts[seat.student.subjectCode] += 1
+                    subject_counts[seat.student.subject_code] += 1
                     dept = seat.student.department
-                    dept_data[dept]['students'].append(seat.student.registerNumber)
-                    dept_data[dept]['halls'][hall.name].append(seat.student.registerNumber)
+                    dept_data[dept]['students'].append(seat.student.register_number)
+                    dept_data[dept]['halls'][hall.name].append(seat.student.register_number)
+                    subject_data[seat.student.subject_code].append(seat.student.register_number)
         
         hall_data.append({
             'hall': hall.name,
@@ -105,6 +107,10 @@ def generate_hall_wise_excel(seating_result: SeatingResult) -> BytesIO:
     if auditorium_halls:
         ws_aud = wb.create_sheet("aud seating")
         _write_auditorium_sheet(ws_aud, auditorium_halls, exam_date, session)
+    
+    # === SHEET 5: SUBJECT WISE (Registration numbers by subject) ===
+    ws_subject = wb.create_sheet("SUBJECT WISE")
+    _write_subject_wise_sheet(ws_subject, subject_data, date_str, session)
     
     wb.save(output)
     output.seek(0)
@@ -134,7 +140,7 @@ def _write_seating_sheet(ws, halls, exam_date, session):
         excel_data_cols = num_cols * 2
         
         # Title row
-        title_text = "GCE : : ERODE - 638 316 - ANNA UNIVERSITY EXAMS - HALL  SKETCH - NOV/DEC 2025"
+        title_text = f"GCE : : ERODE - 638 316 - ANNA UNIVERSITY EXAMS - HALL  SKETCH - {exam_date}"
         ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=excel_data_cols)
         title_cell = ws.cell(row=current_row, column=1, value=title_text)
         title_cell.font = TITLE_FONT
@@ -174,8 +180,8 @@ def _write_seating_sheet(ws, halls, exam_date, session):
                 seat_number = get_snake_seat_number(row_idx, col_idx, num_rows)
                 
                 if seat and seat.student:
-                    reg_cell.value = seat.student.registerNumber
-                    dept_students[seat.student.department].append(seat.student.registerNumber)
+                    reg_cell.value = seat.student.register_number
+                    dept_students[seat.student.department].append(seat.student.register_number)
                 else:
                     reg_cell.value = ""
                 
@@ -288,7 +294,7 @@ def _write_nb_sheet(ws, dept_data, date_str, session):
     """Write the NB sheet with department-wise breakdown."""
     # Title
     ws.merge_cells('A1:E1')
-    title_cell = ws.cell(row=1, column=1, value="GCE : : ERODE - ANNA UNIVERSITY EXAMS - NOV/DEC 2025")
+    title_cell = ws.cell(row=1, column=1, value=f"GCE : : ERODE - ANNA UNIVERSITY EXAMS - {date_str}")
     title_cell.font = TITLE_FONT
     title_cell.alignment = CENTER_ALIGN
     
@@ -368,7 +374,7 @@ def _write_auditorium_sheet(ws, auditorium_halls, exam_date, session):
         excel_data_cols = num_cols * 2
         
         # Title
-        title_text = "GCE : : ERODE - 638 316 - ANNA UNIVERSITY EXAMS - \nHALL  SKETCH - NOV/DEC 2025"
+        title_text = f"GCE : : ERODE - 638 316 - ANNA UNIVERSITY EXAMS - \nHALL  SKETCH - {exam_date}"
         ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=excel_data_cols)
         title_cell = ws.cell(row=current_row, column=1, value=title_text)
         title_cell.font = TITLE_FONT
@@ -415,8 +421,8 @@ def _write_auditorium_sheet(ws, auditorium_halls, exam_date, session):
             if grid_row and grid_row < len(grid) and 0 < len(grid[grid_row]):
                 seat = grid[grid_row][0]
                 if seat and seat.student:
-                    ws.cell(row=data_row, column=excel_col, value=seat.student.registerNumber).font = DATA_FONT
-                    dept_students[seat.student.department].append(seat.student.registerNumber)
+                    ws.cell(row=data_row, column=excel_col, value=seat.student.register_number).font = DATA_FONT
+                    dept_students[seat.student.department].append(seat.student.register_number)
             ws.cell(row=data_row, column=excel_col + 1, value=seat_num_col1).font = DATA_FONT
             
             # Column 2: seats 16-9 (reversed)
@@ -426,8 +432,8 @@ def _write_auditorium_sheet(ws, auditorium_halls, exam_date, session):
             if grid_row and grid_row < len(grid) and 1 < len(grid[grid_row]):
                 seat = grid[grid_row][1]
                 if seat and seat.student:
-                    ws.cell(row=data_row, column=excel_col, value=seat.student.registerNumber).font = DATA_FONT
-                    dept_students[seat.student.department].append(seat.student.registerNumber)
+                    ws.cell(row=data_row, column=excel_col, value=seat.student.register_number).font = DATA_FONT
+                    dept_students[seat.student.department].append(seat.student.register_number)
             ws.cell(row=data_row, column=excel_col + 1, value=seat_num_col2).font = DATA_FONT
             
             # Column 3: seats 17-24
@@ -437,8 +443,8 @@ def _write_auditorium_sheet(ws, auditorium_halls, exam_date, session):
             if grid_row and grid_row < len(grid) and 2 < len(grid[grid_row]):
                 seat = grid[grid_row][2]
                 if seat and seat.student:
-                    ws.cell(row=data_row, column=excel_col, value=seat.student.registerNumber).font = DATA_FONT
-                    dept_students[seat.student.department].append(seat.student.registerNumber)
+                    ws.cell(row=data_row, column=excel_col, value=seat.student.register_number).font = DATA_FONT
+                    dept_students[seat.student.department].append(seat.student.register_number)
             ws.cell(row=data_row, column=excel_col + 1, value=seat_num_col3).font = DATA_FONT
         
         current_row += 8
@@ -449,8 +455,8 @@ def _write_auditorium_sheet(ws, auditorium_halls, exam_date, session):
         if len(grid) > 0 and len(grid[0]) > 2:
             seat = grid[0][2]
             if seat and seat.student:
-                ws.cell(row=current_row, column=5, value=seat.student.registerNumber).font = DATA_FONT
-                dept_students[seat.student.department].append(seat.student.registerNumber)
+                ws.cell(row=current_row, column=5, value=seat.student.register_number).font = DATA_FONT
+                dept_students[seat.student.department].append(seat.student.register_number)
         ws.cell(row=current_row, column=6, value=25).font = DATA_FONT
         current_row += 2
         
@@ -468,6 +474,58 @@ def _write_auditorium_sheet(ws, auditorium_halls, exam_date, session):
         current_row += 2
 
 
+def _write_subject_wise_sheet(ws, subject_data, date_str, session):
+    """Write the SUBJECT WISE sheet — registration numbers listed vertically per subject."""
+    # Title
+    ws.merge_cells('A1:F1')
+    title_cell = ws.cell(row=1, column=1, value=f"GCE : : ERODE - ANNA UNIVERSITY EXAMS - {date_str}")
+    title_cell.font = TITLE_FONT
+    title_cell.alignment = CENTER_ALIGN
+
+    ws.merge_cells('A2:F2')
+    ws.cell(row=2, column=1, value="SUBJECT WISE STUDENT LIST").font = HEADER_FONT
+    ws.cell(row=2, column=1).alignment = CENTER_ALIGN
+
+    ws.cell(row=3, column=1, value=f"DATE & SESSION  :  {date_str} {session}").font = HEADER_FONT
+
+    # Sort subjects
+    sorted_subjects = sorted(subject_data.keys())
+
+    # Write each subject as a column, side by side (max 5 subjects per group)
+    subjects_per_page = 5
+    start_row = 5
+
+    for group_idx in range(0, len(sorted_subjects), subjects_per_page):
+        group = sorted_subjects[group_idx:group_idx + subjects_per_page]
+
+        # Header row: Subject codes with count
+        for col_offset, subject in enumerate(group):
+            col = col_offset + 1
+            students = sorted(subject_data[subject])
+            header_text = f"{subject} ({len(students)})"
+            cell = ws.cell(row=start_row, column=col, value=header_text)
+            cell.font = HEADER_FONT
+            cell.alignment = CENTER_ALIGN
+            cell.border = FULL_BORDER
+            ws.column_dimensions[get_column_letter(col)].width = 22
+
+        # Data rows: registration numbers vertically
+        max_students = max(len(subject_data[s]) for s in group)
+        for row_offset in range(max_students):
+            for col_offset, subject in enumerate(group):
+                col = col_offset + 1
+                students = sorted(subject_data[subject])
+                if row_offset < len(students):
+                    cell = ws.cell(row=start_row + 1 + row_offset, column=col, value=students[row_offset])
+                    cell.font = DATA_FONT
+                    cell.alignment = CENTER_ALIGN
+                    cell.border = FULL_BORDER
+                else:
+                    ws.cell(row=start_row + 1 + row_offset, column=col).border = FULL_BORDER
+
+        # Move start_row down for next group
+        start_row += max_students + 3  # 1 header + data + 2 blank rows
+
 
 
 def generate_student_wise_excel(seating_result: SeatingResult) -> BytesIO:
@@ -475,14 +533,31 @@ def generate_student_wise_excel(seating_result: SeatingResult) -> BytesIO:
     output = BytesIO()
     data = []
     for allocation in seating_result.studentAllocation:
+        if isinstance(allocation, dict):
+            reg = allocation.get('registerNumber') or allocation.get('register_number')
+            sub = allocation.get('subject') or allocation.get('subject_code')
+            dept = allocation.get('department')
+            hall = allocation.get('hallName') or allocation.get('hall_name')
+            seat = allocation.get('seatNumber') or allocation.get('seat_number')
+            row = allocation.get('row', 0)
+            col = allocation.get('col', 0)
+        else:
+            reg = getattr(allocation, 'registerNumber', getattr(allocation, 'register_number', ''))
+            sub = getattr(allocation, 'subject', getattr(allocation, 'subject_code', ''))
+            dept = getattr(allocation, 'department', '')
+            hall = getattr(allocation, 'hallName', getattr(allocation, 'hall_name', ''))
+            seat = getattr(allocation, 'seatNumber', getattr(allocation, 'seat_number', ''))
+            row = getattr(allocation, 'row', 0)
+            col = getattr(allocation, 'col', 0)
+
         data.append({
-            'Registration Number': allocation.registerNumber,
-            'Subject': allocation.subject,
-            'Department': allocation.department,
-            'Hall': allocation.hallName,
-            'Seat Number': allocation.seatNumber,
-            'Row': allocation.row + 1,
-            'Column': allocation.col + 1
+            'Registration Number': reg,
+            'Subject': sub,
+            'Department': dept,
+            'Hall': hall,
+            'Seat Number': seat,
+            'Row': row + 1,
+            'Column': col + 1
         })
     df = pd.DataFrame(data)
     df = df.sort_values(['Registration Number'])

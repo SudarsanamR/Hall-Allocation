@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, Download, RefreshCw, LayoutGrid, Trash2 } from 'lucide-react';
-import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, downloadStudentWiseExcel, getSessionSeating, clearAllocations, getSessions } from '../utils/api';
+import { Upload as UploadIcon, FileSpreadsheet, CheckCircle2, AlertCircle, RefreshCw, LayoutGrid, Trash2, Settings, Share2 } from 'lucide-react';
+import { uploadFile, generateSeating, getStudents, downloadHallWiseExcel, getSessionSeating, clearAllocations, getSessions, exportAllocationsJSON, healthCheck } from '../utils/api';
 import type { SeatingResult, UploadFileResponse, Stats } from '../types';
 import SeatingGrid from '../components/seating/SeatingGrid';
 import StatCards from '../components/layout/StatCards';
+import ConfigurableSubjects from '../components/admin/ConfigurableSubjects';
 
 const AdminDashboard = () => {
-    const navigate = useNavigate();
+
+    const [activeTab, setActiveTab] = useState<'seating' | 'config'>('seating');
     // State for Upload
     const [uploading, setUploading] = useState(false);
     const [uploadResult, setUploadResult] = useState<UploadFileResponse | null>(null);
@@ -21,6 +22,7 @@ const AdminDashboard = () => {
     const [error, setError] = useState<string | null>(null);
     const [hasStudents, setHasStudents] = useState(false);
     const [backendError, setBackendError] = useState<boolean>(false);
+    const [showClearConfirm, setShowClearConfirm] = useState(false);
 
     const [availableSessions, setAvailableSessions] = useState<string[]>([]);
     const [currentResult, setCurrentResult] = useState<SeatingResult | null>(null);
@@ -30,21 +32,43 @@ const AdminDashboard = () => {
         checkStudentsAndLoad();
     }, []);
 
-    const checkStudentsAndLoad = async () => {
+    const checkStudentsAndLoad = async (retries = 15): Promise<void> => {
+        // Phase 1: Wait for backend to be ready using lightweight health check
+        for (let attempt = 0; attempt < retries; attempt++) {
+            try {
+                const isHealthy = await healthCheck();
+                if (isHealthy) {
+                    setBackendError(false);
+                    break;
+                }
+                throw new Error('Backend not ready');
+            } catch (err) {
+                console.warn(`Backend health check attempt ${attempt + 1}/${retries} failed`);
+                if (attempt < retries - 1) {
+                    // Exponential backoff: 1s, 1.5s, 2s, 2.5s, 3s...
+                    await new Promise(r => setTimeout(r, 1000 + attempt * 500));
+                } else {
+                    // All retries exhausted
+                    console.error('Backend health check failed after all retries');
+                    setHasStudents(false);
+                    setBackendError(true);
+                    return;
+                }
+            }
+        }
+
+        // Phase 2: Backend is ready, check for existing students
         try {
             const students = await getStudents();
-            setBackendError(false);
             if (students.length > 0) {
                 setHasStudents(true);
-                // Instead of auto-generating, just check for existing sessions
                 loadExistingSessions();
             } else {
                 setHasStudents(false);
             }
         } catch (err) {
-            console.error("Backend check failed:", err);
+            console.error('Failed to load students:', err);
             setHasStudents(false);
-            setBackendError(true);
         }
     };
 
@@ -113,8 +137,16 @@ const AdminDashboard = () => {
             // Auto generate after successful upload
             await handleGenerate();
 
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to upload file');
+        } catch (err: any) {
+            // Extract the error message from the backend response if available
+            const backendMessage = err?.response?.data?.error;
+            if (backendMessage) {
+                setError(backendMessage);
+            } else if (err?.message === 'Network Error') {
+                setError('Cannot connect to the backend server. Please restart the application.');
+            } else {
+                setError(err instanceof Error ? err.message : 'Failed to upload file');
+            }
         } finally {
             setUploading(false);
         }
@@ -161,10 +193,6 @@ const AdminDashboard = () => {
     };
 
     const handleClear = async () => {
-        if (!window.confirm("Are you sure you want to reset everything? This will clear all student data and allocations.\n\nYou will need to re-upload the PDF to generate new seating.")) {
-            return;
-        }
-
         setIsLoading(true);
         try {
             await clearAllocations();
@@ -182,6 +210,7 @@ const AdminDashboard = () => {
             setError('Failed to clear allocations.');
         } finally {
             setIsLoading(false);
+            setShowClearConfirm(false);
         }
     };
 
@@ -296,9 +325,7 @@ const AdminDashboard = () => {
         if (selectedSession) downloadHallWiseExcel(selectedSession);
     };
 
-    const handleDownloadStudent = () => {
-        if (selectedSession) downloadStudentWiseExcel(selectedSession);
-    };
+
 
     const stats: Stats = {
         totalStudents: currentResult?.totalStudents || 0,
@@ -325,7 +352,9 @@ const AdminDashboard = () => {
         'MBA': 'bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800',
         'MCA': 'bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800',
         'AUTO': 'bg-rose-200 text-rose-900 border-rose-300 dark:bg-rose-800/40 dark:text-rose-200 dark:border-rose-700',
-        'AUTOMOBILE': 'bg-rose-200 text-rose-900 border-rose-300 dark:bg-rose-800/40 dark:text-rose-200 dark:border-rose-700'
+        'AUTOMOBILE': 'bg-rose-200 text-rose-900 border-rose-300 dark:bg-rose-800/40 dark:text-rose-200 dark:border-rose-700',
+        'ME CSE': 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-900/30 dark:text-slate-300 dark:border-slate-800',
+        'ME STRU': 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800'
     };
 
     const fallbackColors = [
@@ -364,254 +393,337 @@ const AdminDashboard = () => {
     }
 
     return (
-        <div className="space-y-12 animate-fade-in pb-12 max-w-7xl mx-auto">
+        <div className="space-y-6 animate-fade-in pb-12 max-w-7xl mx-auto">
 
-            {/* 1. Upload Section */}
-            <section className="space-y-6">
+            {/* Tab Navigation */}
+            <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 pb-1">
+                <button
+                    onClick={() => setActiveTab('seating')}
+                    className={`px-5 py-2.5 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'seating'
+                        ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300 border-b-2 border-primary-600'
+                        : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800'}`}
+                >
+                    <LayoutGrid size={18} />
+                    Seating
+                </button>
+                <button
+                    onClick={() => setActiveTab('config')}
+                    className={`px-5 py-2.5 rounded-t-lg text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'config'
+                        ? 'bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300 border-b-2 border-primary-600'
+                        : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800'}`}
+                >
+                    <Settings size={18} />
+                    Configuration
+                </button>
+            </div>
 
-                {/* Backend Error Banner */}
-                {backendError && (
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center gap-3 animate-pulse">
-                        <AlertCircle className="text-red-600 dark:text-red-400 flex-shrink-0" size={24} />
-                        <div>
-                            <h3 className="font-semibold text-red-900 dark:text-red-200">Backend Service Unavailable</h3>
-                            <p className="text-sm text-red-700 dark:text-red-300">
-                                Could not connect to the server. Please check if the backend is running.
+            {/* Configuration Tab */}
+            {activeTab === 'config' && (
+                <ConfigurableSubjects />
+            )}
+
+            {/* Seating Tab */}
+            {activeTab === 'seating' && (
+                <>
+
+                    {/* 1. Upload Section */}
+                    {!hasStudents && (
+                        <section className="space-y-6">
+
+                        {/* Backend Error Banner */}
+                        {backendError && (
+                            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center gap-3 animate-pulse">
+                                <AlertCircle className="text-red-600 dark:text-red-400 flex-shrink-0" size={24} />
+                                <div>
+                                    <h3 className="font-semibold text-red-900 dark:text-red-200">Backend Service Unavailable</h3>
+                                    <p className="text-sm text-red-700 dark:text-red-300">
+                                        Could not connect to the server. Please check if the backend is running.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="text-center">
+                            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                                Exam Seating Automation
+                            </h1>
+                            <p className="text-gray-500 dark:text-gray-400">
+                                Upload your exam schedule PDF directly from the university portal.
                             </p>
                         </div>
-                    </div>
-                )}
 
-                <div className="text-center">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                        Exam Seating Automation
-                    </h1>
-                    <p className="text-gray-500 dark:text-gray-400">
-                        Upload your exam schedule PDF directly from the university portal.
-                    </p>
-                </div>
+                        <div className="card max-w-3xl mx-auto">
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".pdf"
+                                onChange={handleChange}
+                                className="hidden"
+                                aria-label="Upload PDF file"
+                            />
 
-                <div className="card max-w-3xl mx-auto">
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".pdf"
-                        onChange={handleChange}
-                        className="hidden"
-                        aria-label="Upload PDF file"
-                    />
-
-                    <div
-                        className={`
+                            <div
+                                className={`
                             border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer
                             transition-all duration-300
                             ${dragActive
-                                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                                : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                            }
+                                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                                        : 'border-gray-300 dark:border-gray-700 hover:border-primary-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                                    }
                         `}
-                        onDragEnter={handleDrag}
-                        onDragLeave={handleDrag}
-                        onDragOver={handleDrag}
-                        onDrop={handleDrop}
-                        onClick={() => fileInputRef.current?.click()}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                fileInputRef.current?.click();
-                            }
-                        }}
-                        aria-label="Click or drag to upload PDF file"
-                    >
-                        <div className="w-16 h-16 bg-primary-100 dark:bg-primary-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                            {uploading ? (
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 dark:border-primary-400" />
-                            ) : (
-                                <UploadIcon className="text-primary-600 dark:text-primary-400" size={32} />
-                            )}
-                        </div>
+                                onDragEnter={handleDrag}
+                                onDragLeave={handleDrag}
+                                onDragOver={handleDrag}
+                                onDrop={handleDrop}
+                                onClick={() => fileInputRef.current?.click()}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        fileInputRef.current?.click();
+                                    }
+                                }}
+                                aria-label="Click or drag to upload PDF file"
+                            >
+                                <div className="w-16 h-16 bg-primary-100 dark:bg-primary-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    {uploading ? (
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 dark:border-primary-400" />
+                                    ) : (
+                                        <UploadIcon className="text-primary-600 dark:text-primary-400" size={32} />
+                                    )}
+                                </div>
 
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                            {uploading ? 'Processing File...' : 'Drop PDF file here to upload'}
-                        </h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Supported: PDF
-                        </p>
-                    </div>
-
-                    {/* Upload Status / Error */}
-                    {error && (
-                        <div className="mt-4 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-start gap-3">
-                            <AlertCircle className="text-red-600 dark:text-red-400 flex-shrink-0" size={20} />
-                            <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
-                        </div>
-                    )}
-
-                    {uploadResult && (
-                        <div className="mt-4 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 flex items-center gap-3">
-                            <CheckCircle2 className="text-green-600 dark:text-green-400 flex-shrink-0" size={20} />
-                            <div>
-                                <p className="font-semibold text-green-900 dark:text-green-200">Upload Complete</p>
-                                <p className="text-xs text-green-700 dark:text-green-400">
-                                    Processed {uploadResult.studentsCount} students. Generating seating...
+                                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                                    {uploading ? 'Processing File...' : 'Drop PDF file here to upload'}
+                                </h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    Supported: PDF
                                 </p>
                             </div>
+
+                            {/* Upload Status / Error */}
+                            {error && (
+                                <div className="mt-4 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-start gap-3">
+                                    <AlertCircle className="text-red-600 dark:text-red-400 flex-shrink-0" size={20} />
+                                    <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+                                </div>
+                            )}
+
+                            {uploadResult && (
+                                <div className="mt-4 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 flex items-center gap-3">
+                                    <CheckCircle2 className="text-green-600 dark:text-green-400 flex-shrink-0" size={20} />
+                                    <div>
+                                        <p className="font-semibold text-green-900 dark:text-green-200">Upload Complete</p>
+                                        <p className="text-xs text-green-700 dark:text-green-400">
+                                            Processed {uploadResult.studentsCount} students. Generating seating...
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
-            </section>
-
-            {/* 2. Results Section (Only if we have data) */}
-            {(hasStudents || isLoading) && (
-                <section className="space-y-8 border-t border-gray-200 dark:border-gray-800 pt-12">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                Allocation Dashboard
-                            </h2>
-                            <p className="text-gray-500 dark:text-gray-400">
-                                Review seating and download reports
-                            </p>
-                        </div>
-
-                        {!isLoading && (
-                            <div className="flex flex-wrap gap-2 sm:gap-3">
-                                <button
-                                    onClick={() => navigate('/halls')}
-                                    className="btn-secondary flex items-center gap-2 text-sm bg-white dark:bg-gray-800 flex-1 sm:flex-none justify-center"
-                                    aria-label="Manage Halls"
-                                >
-                                    <LayoutGrid size={16} />
-                                    <span className="whitespace-nowrap">Manage Halls</span>
-                                </button>
-                                <button
-                                    onClick={handleGenerate}
-                                    className="btn-secondary flex items-center gap-2 text-sm flex-1 sm:flex-none justify-center"
-                                    aria-label="Refresh Allocation"
-                                >
-                                    <RefreshCw size={16} />
-                                    <span className="whitespace-nowrap">Refresh Allocation</span>
-                                </button>
-                                <button
-                                    onClick={handleClear}
-                                    className="btn-secondary flex items-center gap-2 text-sm !text-red-600 hover:!bg-red-50 dark:!text-red-400 dark:hover:!bg-red-900/50 flex-1 sm:flex-none justify-center"
-                                    title="Delete all current allocations"
-                                    aria-label="Clear All Allocations"
-                                >
-                                    <Trash2 size={16} />
-                                    <span className="whitespace-nowrap">Clear All</span>
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Stats */}
-
-
-                    {/* Loading State */}
-                    {isLoading && (
-                        <div className="animate-pulse space-y-6">
-                            <div className="h-8 w-1/3 bg-gray-200 dark:bg-gray-800 rounded-lg"></div>
-                            <div className="h-96 bg-gray-100 dark:bg-gray-800 rounded-2xl"></div>
-                        </div>
+                    </section>
                     )}
 
-                    {/* Results Content */}
-                    {!isLoading && availableSessions.length > 0 && (
-                        <>
-                            {/* Controls Bar */}
-                            <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 flex flex-wrap items-center justify-between gap-4">
+                    {/* 2. Results Section (Only if we have data) */}
+                    {(hasStudents || isLoading) && (
+                        <section className={`space-y-8 ${!hasStudents ? 'border-t border-gray-200 dark:border-gray-800 pt-12' : ''}`}>
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                        Allocation Dashboard
+                                    </h2>
+                                    <p className="text-gray-500 dark:text-gray-400">
+                                        Review seating and download reports
+                                    </p>
+                                </div>
 
-                                {/* Session Switcher */}
-                                <div className="flex flex-wrap gap-2">
-                                    {availableSessions.map(session => (
+                                {!isLoading && (
+                                    <div className="flex flex-wrap gap-2 sm:gap-3">
+
                                         <button
-                                            key={session}
-                                            onClick={() => setSelectedSession(session)}
-                                            className={`
-                                                px-4 py-2 rounded-xl font-medium text-sm transition-all
-                                                ${selectedSession === session
-                                                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-md'
-                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
-                                                }
-                                            `}
+                                            onClick={handleGenerate}
+                                            className="btn-secondary flex items-center gap-2 text-sm flex-1 sm:flex-none justify-center"
+                                            aria-label="Refresh Allocation"
                                         >
-                                            {session.replace('_', ' ')}
+                                            <RefreshCw size={16} />
+                                            <span className="whitespace-nowrap">Refresh Allocation</span>
                                         </button>
-                                    ))}
-                                </div>
-
-                                {/* Downloads */}
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={handleDownloadHall}
-                                        className="btn-accent flex items-center gap-2 py-2 px-4 text-sm bg-green-600 hover:bg-green-700 shadow-none"
-                                        title="Download excel for notice board"
-                                    >
-                                        <FileSpreadsheet size={18} />
-                                        <span className="hidden sm:inline">Hall Sketch</span>
-                                    </button>
-                                    <button
-                                        onClick={handleDownloadStudent}
-                                        className="btn-primary flex items-center gap-2 py-2 px-4 text-sm"
-                                        title="Download student allocation list"
-                                    >
-                                        <Download size={18} />
-                                        <span className="hidden sm:inline">Student List</span>
-                                    </button>
-                                </div>
+                                        <button
+                                            onClick={() => setShowClearConfirm(true)}
+                                            className="btn-secondary flex items-center gap-2 text-sm !text-red-600 hover:!bg-red-50 dark:!text-red-400 dark:hover:!bg-red-900/50 flex-1 sm:flex-none justify-center"
+                                            title="Delete all current allocations"
+                                            aria-label="Clear All Allocations"
+                                        >
+                                            <Trash2 size={16} />
+                                            <span className="whitespace-nowrap">Clear All</span>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Stats */}
-                            <div className="mt-8 mb-8">
-                                <StatCards
-                                    stats={{ ...stats, blockBreakdown }}
-                                    selectedDepts={selectedDepts}
-                                    selectedSubjects={selectedSubjects}
-                                    selectedBlocks={selectedBlocks}
-                                    onToggleDept={toggleDept}
-                                    onToggleSubject={toggleSubject}
-                                    onToggleBlock={toggleBlock}
-                                    onSelectAllSubjects={selectAllSubjects}
-                                    onSelectAllBlocks={selectAllBlocks}
-                                    colorMap={colorMap}
-                                />
-                            </div>
 
-                            {/* Seating Grid */}
-                            {currentResult && (
-                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-                                    {/* Filter Halls based on selection */}
-                                    {currentResult.halls.filter(hall => {
-                                        // 1. Block Filter
-                                        const matchesBlock = selectedBlocks.includes(hall.hall.block);
-                                        if (!matchesBlock) return false;
 
-                                        // 2. Student Filter (Show hall if it has ANY student matching the filter)
-                                        return hall.grid.some(row =>
-                                            row.some(seat =>
-                                                seat.student &&
-                                                selectedDepts.includes(seat.student.department) &&
-                                                // Use seat.subject (full string) to match selectedSubjects keys
-                                                seat.subject && selectedSubjects.includes(seat.subject)
-                                            )
-                                        );
-                                    }).map((hallSeating) => (
-                                        <SeatingGrid
-                                            key={hallSeating.hall.id}
-                                            hallSeating={hallSeating}
-                                            colorMap={colorMap}
-                                            selectedDepts={selectedDepts}
-                                            selectedSubjects={selectedSubjects}
-                                        />
-                                    ))}
+                            {/* Loading State */}
+                            {isLoading && (
+                                <div className="animate-pulse space-y-6">
+                                    <div className="h-8 w-1/3 bg-gray-200 dark:bg-gray-800 rounded-lg"></div>
+                                    <div className="h-96 bg-gray-100 dark:bg-gray-800 rounded-2xl"></div>
                                 </div>
                             )}
-                        </>
+
+                            {/* Results Content */}
+                            {!isLoading && availableSessions.length > 0 && (
+                                <>
+                                    {/* Controls Bar */}
+                                    <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 flex flex-wrap items-center justify-between gap-4">
+
+                                        {/* Session Switcher */}
+                                        <div className="flex flex-wrap gap-2">
+                                            {availableSessions.map(session => (
+                                                <button
+                                                    key={session}
+                                                    onClick={() => setSelectedSession(session)}
+                                                    className={`
+                                                px-4 py-2 rounded-xl font-medium text-sm transition-all
+                                                ${selectedSession === session
+                                                            ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-md'
+                                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+                                                        }
+                                            `}
+                                                >
+                                                    {session.replace('_', ' ')}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {/* Downloads */}
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={handleDownloadHall}
+                                                className="btn-accent flex items-center gap-2 py-2 px-4 text-sm bg-green-600 hover:bg-green-700 shadow-none"
+                                                title="Download excel for notice board"
+                                            >
+                                                <FileSpreadsheet size={18} />
+                                                <span className="hidden sm:inline">Hall Sketch</span>
+                                            </button>
+
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        await exportAllocationsJSON();
+                                                    } catch (err) {
+                                                        setError('Failed to export allocations.');
+                                                    }
+                                                }}
+                                                className="btn-secondary flex items-center gap-2 py-2 px-4 text-sm"
+                                                title="Export JSON for student web viewer"
+                                            >
+                                                <Share2 size={18} />
+                                                <span className="hidden sm:inline">Export JSON</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Stats */}
+                                    <div className="mt-8 mb-8">
+                                        <StatCards
+                                            stats={{ ...stats, blockBreakdown }}
+                                            selectedDepts={selectedDepts}
+                                            selectedSubjects={selectedSubjects}
+                                            selectedBlocks={selectedBlocks}
+                                            onToggleDept={toggleDept}
+                                            onToggleSubject={toggleSubject}
+                                            onToggleBlock={toggleBlock}
+                                            onSelectAllSubjects={selectAllSubjects}
+                                            onSelectAllBlocks={selectAllBlocks}
+                                            colorMap={colorMap}
+                                        />
+                                    </div>
+
+                                    {/* Seating Grid */}
+                                    {currentResult && (
+                                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                                            {/* Filter Halls based on selection */}
+                                            {currentResult.halls.filter(hall => {
+                                                // 1. Block Filter
+                                                const matchesBlock = selectedBlocks.includes(hall.hall.block);
+                                                if (!matchesBlock) return false;
+
+                                                // 2. Student Filter (Show hall if it has ANY student matching the filter)
+                                                return hall.grid.some(row =>
+                                                    row.some(seat =>
+                                                        seat.student &&
+                                                        selectedDepts.includes(seat.student.department) &&
+                                                        // Use seat.subject (full string) to match selectedSubjects keys
+                                                        seat.subject && selectedSubjects.includes(seat.subject)
+                                                    )
+                                                );
+                                            }).map((hallSeating) => (
+                                                <SeatingGrid
+                                                    key={hallSeating.hall.id}
+                                                    hallSeating={hallSeating}
+                                                    colorMap={colorMap}
+                                                    selectedDepts={selectedDepts}
+                                                    selectedSubjects={selectedSubjects}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </section>
                     )}
-                </section>
+
+                </>
+            )}
+
+            {/* Clear All Confirmation Modal */}
+            {showClearConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-200 dark:border-gray-800 animate-slide-up">
+                        <div className="flex items-center gap-3 mb-4 text-red-600 dark:text-red-400">
+                            <div className="p-3 rounded-full bg-red-100 dark:bg-red-900/30">
+                                <AlertCircle size={24} />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Reset Everything?</h3>
+                        </div>
+                        <p className="text-gray-600 dark:text-gray-400 mb-2">
+                            This will clear all student data and allocations.
+                        </p>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-500 mb-6">
+                            You will need to re-upload the PDF to generate new seating.
+                        </p>
+                        
+                        <div className="flex gap-3 justify-end mt-8">
+                            <button
+                                onClick={() => setShowClearConfirm(false)}
+                                disabled={isLoading}
+                                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleClear}
+                                disabled={isLoading}
+                                className="px-4 py-2 rounded-xl text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <RefreshCw size={16} className="animate-spin" />
+                                        Clearing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Trash2 size={16} />
+                                        Clear All Data
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

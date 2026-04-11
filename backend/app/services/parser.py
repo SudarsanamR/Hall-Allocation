@@ -60,10 +60,10 @@ def parse_file(file_path: str) -> List[Student]:
     for _, row in df.iterrows():
         try:
             student = Student(
-                registerNumber=str(row[actual_columns['register_number']]).strip().upper(),
-                subjectCode=str(row[actual_columns['subject_code']]).strip().upper(),
+                register_number=str(row[actual_columns['register_number']]).strip().upper(),
+                subject_code=str(row[actual_columns['subject_code']]).strip().upper(),
                 department=str(row[actual_columns['department']]).strip().upper(),
-                examDate=str(row[actual_columns['exam_date']]).strip(),
+                exam_date=str(row[actual_columns['exam_date']]).strip(),
                 session=str(row[actual_columns['session']]).strip().upper()
             )
             students.append(student)
@@ -87,7 +87,7 @@ def validate_student_data(students: List[Student]) -> List[str]:
     warnings = []
     
     # Check for duplicate registration numbers
-    reg_numbers = [s.registerNumber for s in students]
+    reg_numbers = [s.register_number for s in students]
     duplicates = set([x for x in reg_numbers if reg_numbers.count(x) > 1])
     if duplicates:
         warnings.append(f"Duplicate registration numbers found: {', '.join(duplicates)}")

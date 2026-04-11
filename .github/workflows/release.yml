@@ -27,12 +27,6 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
-
       - name: Install frontend dependencies
         run: npm install
         working-directory: frontend
@@ -55,6 +49,15 @@ jobs:
           pyinstaller --onefile --name backend --distpath dist --workpath build desktop_server.py
         working-directory: backend
 
+      - name: Verify Backend EXE
+        run: |
+          if (!(Test-Path "backend/dist/backend.exe")) {
+            Write-Error "Backend EXE not found!"
+            exit 1
+          }
+          $size = (Get-Item "backend/dist/backend.exe").Length / 1MB
+          Write-Host "Backend EXE size: $([math]::Round($size, 2)) MB"
+
       - name: Move Backend Binary
         run: |
           copy backend/dist/backend.exe frontend/src-tauri/backend-x86_64-pc-windows-msvc.exe
@@ -67,8 +70,26 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Hall Allocation v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseName: 'GCEE Exam Hall Allocation ${{ github.ref_name }}'
+          releaseBody: |
+            ## GCEE Exam Hall Allocation ${{ github.ref_name }}
+            
+            **Offline Desktop App — GCE Erode Exam Cell**
+            
+            ### What's New
+            - 🔧 **Improved PDF Parser**: Better format support with multiple regex patterns and detailed error messages when parsing fails
+            - 🏥 **Backend Health Check**: Reliable startup detection — no more false "Backend Unavailable" errors
+            - 📋 **Better Error Messages**: Clear, descriptive errors when PDF format doesn't match (instead of silent "0 students")
+            - 🔌 **Connection Stability**: Longer startup grace period and exponential backoff for slower machines
+            
+            ### Bug Fixes
+            - Fixed: Upload showing "Processed 0 students" as success (now shows descriptive error)
+            - Fixed: "Network Error" banner appearing unnecessarily (removed internet check for offline app)
+            - Fixed: Backend connection failures during sidecar startup race condition
+            - Fixed: Temp files not cleaned up when PDF parsing fails
+            
+            ### Download & Install
+            Download the `.exe` installer from the assets below. Runs completely offline — no login required.
           releaseDraft: false
           prerelease: false
           projectPath: frontend/

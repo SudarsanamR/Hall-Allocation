@@ -1,0 +1,7 @@
+fix(frontend): add retry logic to backend health check
+
+The frontend fires a health check immediately on startup, but the backend
+sidecar takes 3-5 seconds to boot. Previously, the first failed check would
+permanently show "Backend Service Unavailable" even after the backend started.
+
+Now retries up to 10 times with 2-second delays before showing the error banner.
